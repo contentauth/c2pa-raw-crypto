@@ -54,22 +54,18 @@ impl RsaSigner {
 
         let mut pk_builder = RsaPrivateKeyBuilder::new(n, e, d)?;
 
-        if let Some(p) = po {
-            if let Some(q) = qo {
-                pk_builder = pk_builder.set_factors(p.to_owned()?, q.to_owned()?)?;
-            }
+        if let Some(p) = po
+            && let Some(q) = qo
+        {
+            pk_builder = pk_builder.set_factors(p.to_owned()?, q.to_owned()?)?;
         }
 
-        if let Some(dmp1) = dmp1o {
-            if let Some(dmq1) = dmq1o {
-                if let Some(iqmp) = iqmpo {
-                    pk_builder = pk_builder.set_crt_params(
-                        dmp1.to_owned()?,
-                        dmq1.to_owned()?,
-                        iqmp.to_owned()?,
-                    )?;
-                }
-            }
+        if let Some(dmp1) = dmp1o
+            && let Some(dmq1) = dmq1o
+            && let Some(iqmp) = iqmpo
+        {
+            pk_builder =
+                pk_builder.set_crt_params(dmp1.to_owned()?, dmq1.to_owned()?, iqmp.to_owned()?)?;
         }
 
         let private_key = PKey::from_rsa(pk_builder.build())?;
