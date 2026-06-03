@@ -32,7 +32,7 @@ rust_native_crypto = [
 const-hex = "1.14"
 pkcs8 = "0.10.2"
 serde = { version = "1.0.225", features = ["derive"] }
-spki = "0.7.3"
+spki = "0.8.0"
 thiserror = "2.0.17"
 
 # Rust-native crypto backend (default).
