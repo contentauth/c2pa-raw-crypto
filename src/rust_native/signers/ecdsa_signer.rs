@@ -70,12 +70,11 @@ impl EcdsaSigner {
                         "invalid ES512 private key: {e}"
                     ))
                 })?;
-                let key =
-                    P512SigningKey::from_slice(&secret.to_bytes()).map_err(|e| {
-                        RawSignerError::InvalidSigningCredentials(format!(
-                            "invalid ES512 private key: {e}"
-                        ))
-                    })?;
+                let key = P512SigningKey::from_slice(&secret.to_bytes()).map_err(|e| {
+                    RawSignerError::InvalidSigningCredentials(format!(
+                        "invalid ES512 private key: {e}"
+                    ))
+                })?;
                 (EcdsaSigningKey::Es512(key), EcdsaSigningAlg::Es512)
             }
 
