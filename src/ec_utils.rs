@@ -223,8 +223,9 @@ mod tests {
     use super::*;
     use crate::RawSignerError;
 
-    /// Builds a DER `SEQUENCE { r INTEGER, s INTEGER }` from raw `r`/`s` content
-    /// octets. Lengths are kept short-form (< 128 bytes) for test simplicity.
+    /// Builds a DER `SEQUENCE { r INTEGER, s INTEGER }` from raw `r`/`s`
+    /// content octets. Lengths are kept short-form (< 128 bytes) for test
+    /// simplicity.
     fn der_sig(r: &[u8], s: &[u8]) -> Vec<u8> {
         let int = |v: &[u8]| {
             let mut out = vec![0x02u8, v.len() as u8];
