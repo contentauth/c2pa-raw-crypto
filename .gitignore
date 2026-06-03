@@ -1,0 +1,15 @@
+/target/
+
+Cargo.lock
+
+**/*.rs.bk
+**/*.tmp*
+
+.DS_Store
+.idea
+.cargo/config.toml
+
+.vscode
+.claude
+
+/semver-checks/target/
