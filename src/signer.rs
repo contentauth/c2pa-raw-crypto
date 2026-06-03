@@ -50,14 +50,6 @@ pub enum RawSignerError {
     #[error("invalid signing credentials ({0})")]
     InvalidSigningCredentials(String),
 
-    /// An I/O error occurred. This typically happens when loading
-    /// public/private key material from files.
-    ///
-    /// NOTE: We do not directly capture the I/O error itself because it
-    /// lacks an `Eq` implementation. Instead we capture the error description.
-    #[error("I/O error ({0})")]
-    IoError(String),
-
     /// An error was reported by the underlying cryptography implementation.
     #[error("an error was reported by the cryptography library: {0}")]
     CryptoLibraryError(String),
@@ -76,12 +68,6 @@ pub enum RawSignerError {
     /// An unexpected internal error occured while generating the signature.
     #[error("internal error ({0})")]
     InternalError(String),
-}
-
-impl From<std::io::Error> for RawSignerError {
-    fn from(err: std::io::Error) -> Self {
-        Self::IoError(err.to_string())
-    }
 }
 
 #[cfg(feature = "openssl")]
