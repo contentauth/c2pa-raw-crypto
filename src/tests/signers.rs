@@ -14,7 +14,29 @@
 #[cfg(all(target_arch = "wasm32", not(target_os = "wasi")))]
 use wasm_bindgen_test::wasm_bindgen_test;
 
-use crate::{SigningAlg, signer_from_private_key, validator_for_signing_alg};
+use crate::{
+    RawSigner, RawSignerError, SigningAlg, signer_from_private_key, validator_for_signing_alg,
+};
+
+/// Unwraps the signer when a crypto backend is compiled in.
+///
+/// When neither the `rust_native_crypto` nor the `openssl` feature is enabled,
+/// no backend is available: asserts that the expected `NoCryptoBackend` error
+/// was returned and yields `None` so the test can stop early.
+fn check_signer(
+    result: Result<Box<dyn RawSigner + Send + Sync>, RawSignerError>,
+) -> Option<Box<dyn RawSigner + Send + Sync>> {
+    #[cfg(any(feature = "rust_native_crypto", feature = "openssl"))]
+    {
+        Some(result.unwrap())
+    }
+
+    #[cfg(not(any(feature = "rust_native_crypto", feature = "openssl")))]
+    {
+        assert!(matches!(result, Err(RawSignerError::NoCryptoBackend)));
+        None
+    }
+}
 
 #[test]
 #[cfg_attr(
@@ -24,7 +46,10 @@ use crate::{SigningAlg, signer_from_private_key, validator_for_signing_alg};
 fn es256() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/es256.priv");
 
-    let signer = signer_from_private_key(private_key, SigningAlg::Es256).unwrap();
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es256))
+    else {
+        return;
+    };
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
@@ -46,7 +71,10 @@ fn es256() {
 fn es384() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/es384.priv");
 
-    let signer = signer_from_private_key(private_key, SigningAlg::Es384).unwrap();
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es384))
+    else {
+        return;
+    };
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
@@ -68,7 +96,10 @@ fn es384() {
 fn es512() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/es512.priv");
 
-    let signer = signer_from_private_key(private_key, SigningAlg::Es512).unwrap();
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es512))
+    else {
+        return;
+    };
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
@@ -90,7 +121,10 @@ fn es512() {
 fn ed25519() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/ed25519.priv");
 
-    let signer = signer_from_private_key(private_key, SigningAlg::Ed25519).unwrap();
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ed25519))
+    else {
+        return;
+    };
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
@@ -112,7 +146,10 @@ fn ed25519() {
 fn ps256() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/ps256.priv");
 
-    let signer = signer_from_private_key(private_key, SigningAlg::Ps256).unwrap();
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps256))
+    else {
+        return;
+    };
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
@@ -134,7 +171,10 @@ fn ps256() {
 fn ps384() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/ps384.priv");
 
-    let signer = signer_from_private_key(private_key, SigningAlg::Ps384).unwrap();
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps384))
+    else {
+        return;
+    };
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
@@ -156,7 +196,10 @@ fn ps384() {
 fn ps512() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/ps512.priv");
 
-    let signer = signer_from_private_key(private_key, SigningAlg::Ps512).unwrap();
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps512))
+    else {
+        return;
+    };
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();

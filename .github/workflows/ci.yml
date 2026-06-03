@@ -74,6 +74,7 @@ jobs:
           fail_ci_if_error: true
           verbose: true
           files: ./lcov.filtered.info
+          flags: all-features
 
   doc-tests:
     name: Doc tests (requires nightly Rust)
@@ -607,9 +608,37 @@ jobs:
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Run tests
-        run: cargo test --all-targets --no-default-features
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Generate code coverage
+        run: cargo llvm-cov --lib --no-default-features --lcov --ignore-filename-regex tests --output-path lcov.info
+
+      - name: Filter out tests
+        uses: scouten/uncover-tests@v1
+        with:
+          input-file: lcov.info
+          output-file: lcov.filtered.info
+
+      # Tokens aren't available for PRs originating from forks,
+      # so we don't attempt to upload code coverage in that case.
+      - name: Upload code coverage results
+        if: |
+          github.event_name != 'pull_request' ||
+          github.event.pull_request.author_association == 'OWNER' ||
+          github.event.pull_request.author_association == 'COLLABORATOR' ||
+          github.event.pull_request.author_association == 'MEMBER' ||
+          github.event.pull_request.user.login == 'dependabot[bot]'
+        uses: codecov/codecov-action@v6.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          verbose: true
+          files: ./lcov.filtered.info
+          flags: no-default-features
