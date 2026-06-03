@@ -308,7 +308,16 @@ jobs:
         uses: cargo-bins/cargo-binstall@main
 
       - name: Install wasm-bindgen-cli
-        run: cargo binstall -y wasm-bindgen-cli --version 0.2.106
+        # Install the `wasm-bindgen-cli` version that matches the `wasm-bindgen`
+        # crate resolved for this build. We don't commit a `Cargo.lock`, so the
+        # crate floats to the latest compatible version; pinning the CLI would
+        # eventually drift out of sync and fail with a schema-version mismatch.
+        run: |
+          version=$(cargo metadata --format-version 1 \
+            --filter-platform wasm32-unknown-unknown \
+            | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          echo "Installing wasm-bindgen-cli $version"
+          cargo binstall -y wasm-bindgen-cli --version "$version"
 
       - name: Run Wasm tests
         run: cargo test -p c2pa_raw_crypto ${{ matrix.features.flags }} --target wasm32-unknown-unknown
