@@ -50,8 +50,7 @@ fn es256() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/es256.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es256.pub_key");
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256)) else {
         return;
     };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
@@ -68,8 +67,7 @@ fn es256_bad_signature() {
     signature[10] = 10;
 
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es256.pub_key");
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256)) else {
         return;
     };
 
@@ -93,8 +91,7 @@ fn es256_bad_data() {
     let mut data = SAMPLE_DATA.to_vec();
     data[10] = 0;
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256)) else {
         return;
     };
 
@@ -113,8 +110,7 @@ fn es384() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/es384.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es384.pub_key");
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es384))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es384)) else {
         return;
     };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
@@ -126,8 +122,7 @@ fn es512() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/es512.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es512.pub_key");
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es512))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es512)) else {
         return;
     };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
@@ -142,8 +137,7 @@ fn ed25519() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/ed25519.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ed25519.pub_key");
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ed25519))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ed25519)) else {
         return;
     };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
@@ -162,8 +156,7 @@ fn ed25519_bad_data() {
     data[5] = 10;
     data[6] = 11;
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ed25519))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ed25519)) else {
         return;
     };
 
@@ -182,8 +175,7 @@ fn ps256() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/ps256.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ps256.pub_key");
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256)) else {
         return;
     };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
@@ -200,8 +192,7 @@ fn ps256_bad_signature() {
     signature[10] = 10;
 
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ps256.pub_key");
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256)) else {
         return;
     };
 
@@ -225,8 +216,7 @@ fn ps256_bad_data() {
     let mut data = SAMPLE_DATA.to_vec();
     data[10] = 0;
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256)) else {
         return;
     };
 
@@ -245,8 +235,7 @@ fn ps384() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/ps384.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ps384.pub_key");
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps384))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps384)) else {
         return;
     };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
@@ -261,8 +250,7 @@ fn ps512() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/ps512.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ps512.pub_key");
 
-    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps512))
-    else {
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps512)) else {
         return;
     };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();

@@ -46,8 +46,7 @@ fn check_signer(
 fn es256() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/es256.priv");
 
-    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es256))
-    else {
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es256)) else {
         return;
     };
 
@@ -71,8 +70,7 @@ fn es256() {
 fn es384() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/es384.priv");
 
-    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es384))
-    else {
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es384)) else {
         return;
     };
 
@@ -96,8 +94,7 @@ fn es384() {
 fn es512() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/es512.priv");
 
-    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es512))
-    else {
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es512)) else {
         return;
     };
 
@@ -146,8 +143,7 @@ fn ed25519() {
 fn ps256() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/ps256.priv");
 
-    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps256))
-    else {
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps256)) else {
         return;
     };
 
@@ -171,8 +167,7 @@ fn ps256() {
 fn ps384() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/ps384.priv");
 
-    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps384))
-    else {
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps384)) else {
         return;
     };
 
@@ -196,8 +191,7 @@ fn ps384() {
 fn ps512() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/ps512.priv");
 
-    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps512))
-    else {
+    let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps512)) else {
         return;
     };
 
