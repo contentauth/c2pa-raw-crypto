@@ -16,7 +16,7 @@ on:
 
 jobs:
   tests:
-    name: Unit tests
+    name: Unit tests (${{ matrix.os }}, Rust ${{ matrix.rust_version }}, ${{ matrix.features.name }})
 
     if: |
       github.event_name != 'pull_request' ||
@@ -33,6 +33,17 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
         rust_version: [stable, 1.88.0]
+        # Every feature-flag combination is exercised on each locally-compiled
+        # platform. OpenSSL builds fine here (vendored), so all four combos run.
+        features:
+          - name: no-features
+            flags: --no-default-features
+          - name: rust-native
+            flags: --no-default-features --features rust_native_crypto
+          - name: openssl
+            flags: --no-default-features --features openssl
+          - name: all-features
+            flags: --all-features
 
     steps:
       - name: Checkout repository
@@ -51,7 +62,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        run: cargo llvm-cov --lib --all-features --lcov --ignore-filename-regex tests --output-path lcov.info
+        run: cargo llvm-cov --lib ${{ matrix.features.flags }} --lcov --ignore-filename-regex tests --output-path lcov.info
 
       - name: Filter out tests
         uses: scouten/uncover-tests@v1
@@ -70,10 +81,11 @@ jobs:
           github.event.pull_request.user.login == 'dependabot[bot]'
         uses: codecov/codecov-action@v6.0.1
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_ORG_TOKEN }}
           fail_ci_if_error: true
           verbose: true
           files: ./lcov.filtered.info
+          flags: ${{ matrix.features.name }}
 
   doc-tests:
     name: Doc tests (requires nightly Rust)
@@ -131,12 +143,12 @@ jobs:
       #     github.event.pull_request.user.login == 'dependabot[bot]'
       #   uses: codecov/codecov-action@v5
       #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     token: ${{ secrets.CODECOV_ORG_TOKEN }}
       #     fail_ci_if_error: true
       #     verbose: true
 
   tests-cross:
-    name: Unit tests (cross)
+    name: Unit tests (cross, ${{ matrix.target }}, Rust ${{ matrix.rust_version }}, ${{ matrix.features.name }})
 
     if: |
       github.event_name != 'pull_request' ||
@@ -153,6 +165,16 @@ jobs:
       matrix:
         target: [aarch64-unknown-linux-gnu]
         rust_version: [stable, 1.88.0]
+        # OpenSSL builds (vendored) under cross, so all four combos run.
+        features:
+          - name: no-features
+            flags: --no-default-features
+          - name: rust-native
+            flags: --no-default-features --features rust_native_crypto
+          - name: openssl
+            flags: --no-default-features --features openssl
+          - name: all-features
+            flags: --all-features
 
     steps:
       - name: Checkout repository
@@ -175,10 +197,10 @@ jobs:
       # environment. (A PR to fix this would be welcomed!)
 
       - name: Run unit tests (cross build)
-        run: cross test --lib --all-features --target ${{ matrix.target }}
+        run: cross test --lib ${{ matrix.features.flags }} --target ${{ matrix.target }}
 
   tests-ios:
-    name: Unit tests (iOS simulator)
+    name: Unit tests (iOS simulator, ${{ matrix.features.name }})
 
     if: |
       github.event_name != 'pull_request' ||
@@ -189,6 +211,20 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'safe to test')
 
     runs-on: macos-14
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # OpenSSL builds (vendored) for the iOS simulator, so all four combos run.
+        features:
+          - name: no-features
+            flags: --no-default-features
+          - name: rust-native
+            flags: --no-default-features --features rust_native_crypto
+          - name: openssl
+            flags: --no-default-features --features openssl
+          - name: all-features
+            flags: --all-features
 
     steps:
       - name: Checkout repository
@@ -226,10 +262,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run unit tests (cross build)
-        run: cargo dinghy -p auto-ios-aarch64-sim -d ${{ env.device }} test --all-targets --all-features
+        run: cargo dinghy -p auto-ios-aarch64-sim -d ${{ env.device }} test --all-targets ${{ matrix.features.flags }}
 
   tests-wasm:
-    name: Unit tests (Wasm)
+    name: Unit tests (Wasm, ${{ matrix.features.name }})
 
     if: |
       github.event_name != 'pull_request' ||
@@ -240,6 +276,17 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'check-release')
 
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # OpenSSL cannot be compiled for wasm32, so the OpenSSL-enabled combos
+        # are excluded here.
+        features:
+          - name: no-features
+            flags: --no-default-features
+          - name: rust-native
+            flags: --no-default-features --features rust_native_crypto
 
     steps:
       - name: Checkout repository
@@ -261,16 +308,25 @@ jobs:
         uses: cargo-bins/cargo-binstall@main
 
       - name: Install wasm-bindgen-cli
-        run: cargo binstall -y wasm-bindgen-cli --version 0.2.106
+        # Install the `wasm-bindgen-cli` version that matches the `wasm-bindgen`
+        # crate resolved for this build. We don't commit a `Cargo.lock`, so the
+        # crate floats to the latest compatible version; pinning the CLI would
+        # eventually drift out of sync and fail with a schema-version mismatch.
+        run: |
+          version=$(cargo metadata --format-version 1 \
+            --filter-platform wasm32-unknown-unknown \
+            | jq -r '.packages[] | select(.name == "wasm-bindgen") | .version')
+          echo "Installing wasm-bindgen-cli $version"
+          cargo binstall -y wasm-bindgen-cli --version "$version"
 
       - name: Run Wasm tests
-        run: cargo test -p c2pa_raw_crypto --all-features --target wasm32-unknown-unknown
+        run: cargo test -p c2pa_raw_crypto ${{ matrix.features.flags }} --target wasm32-unknown-unknown
         env:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
           WASM_BINDGEN_TEST_TIMEOUT: 60
 
   tests-wasi:
-    name: Unit tests (WASI)
+    name: Unit tests (WASI, ${{ matrix.features.name }})
 
     if: |
       github.event_name != 'pull_request' ||
@@ -281,6 +337,17 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'check-release')
 
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # OpenSSL cannot be compiled for WASI, so the OpenSSL-enabled combos
+        # are excluded here.
+        features:
+          - name: no-features
+            flags: --no-default-features
+          - name: rust-native
+            flags: --no-default-features --features rust_native_crypto
 
     steps:
       - name: Checkout repository
@@ -315,7 +382,7 @@ jobs:
           CC: clang
           RUST_MIN_STACK: 16777216
         run: |
-          cargo +nightly-2026-01-16 test --target wasm32-wasip2 -p c2pa_raw_crypto --all-features -- --no-capture
+          cargo +nightly-2026-01-16 test --target wasm32-wasip2 -p c2pa_raw_crypto ${{ matrix.features.flags }} -- --no-capture
 
   test-direct-minimal-versions:
     name: Unit tests with minimum versions of direct dependencies
@@ -559,6 +626,9 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -571,40 +641,11 @@ jobs:
           # introduce a lifetime check that creates a whole slew of build
           # errors.
 
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install cargo-udeps
+        run: cargo binstall --no-confirm cargo-udeps
+
       - name: Run cargo-udeps
-        run: |
-          mv ./.github/temp-bin/cargo-udeps /home/runner/.cargo/bin/cargo-udeps
-          cargo udeps --all-targets --all-features
-          # NOTE: Using pre-built binary as a workaround for
-          # https://github.com/aig787/cargo-udeps-action/issues/6.
-
-  test-default-disabled:
-    name: Unit tests with default features disabled
-
-    if: |
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.author_association == 'OWNER' ||
-      github.event.pull_request.author_association == 'COLLABORATOR' ||
-      github.event.pull_request.author_association == 'MEMBER' ||
-      github.event.pull_request.user.login == 'dependabot[bot]' ||
-      contains(github.event.pull_request.labels.*.name, 'safe to test')
-
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-      
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-
-      - name: Run tests
-        run: cargo test --all-targets --no-default-features
+        run: cargo udeps --all-targets --all-features
