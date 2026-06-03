@@ -166,4 +166,69 @@ mod tests {
             unreachable!("Expected InvalidSigningCredentials error");
         }
     }
+
+    // A syntactically valid PEM that is not a usable key (base64 "MA==" decodes
+    // to a single 0x30 byte). Drives each per-algorithm `from_pkcs8_pem` /
+    // `from_slice` failure branch.
+    const BAD_PEM: &[u8] = b"-----BEGIN PRIVATE KEY-----\nMA==\n-----END PRIVATE KEY-----\n";
+
+    #[test]
+    fn rejects_invalid_utf8() {
+        let Err(err) = EcdsaSigner::from_private_key(&[0xff, 0xfe, 0xfd], SigningAlg::Es256) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+
+    #[test]
+    fn rejects_invalid_es256_key() {
+        let Err(err) = EcdsaSigner::from_private_key(BAD_PEM, SigningAlg::Es256) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+
+    #[test]
+    fn rejects_invalid_es384_key() {
+        let Err(err) = EcdsaSigner::from_private_key(BAD_PEM, SigningAlg::Es384) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+
+    #[test]
+    fn rejects_invalid_es512_key() {
+        let Err(err) = EcdsaSigner::from_private_key(BAD_PEM, SigningAlg::Es512) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+
+    #[test]
+    fn es512_sign_round_trip() {
+        // The integration ES512 sign test is gated to the OpenSSL backend, so
+        // this exercises the rust-native ES512 `sign` arm and its 132-byte
+        // `max_signature_size`.
+        let private_key = include_bytes!("../../../tests/fixtures/raw_signature/es512.priv");
+        let Ok(signer) = EcdsaSigner::from_private_key(private_key, SigningAlg::Es512) else {
+            panic!("expected a signer");
+        };
+
+        assert_eq!(signer.max_signature_size(), 132);
+
+        let data = b"some sample content to sign";
+        let signature = signer.sign(data).unwrap();
+        assert!(!signature.is_empty());
+        assert!(signature.len() <= signer.max_signature_size());
+
+        let pub_key = include_bytes!("../../../tests/fixtures/raw_signature/es512.pub_key");
+
+        let validator =
+            crate::rust_native::validators::validator_for_signing_alg(SigningAlg::Es512).unwrap();
+        validator.validate(&signature, data, pub_key).unwrap();
+    }
 }

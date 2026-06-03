@@ -125,3 +125,49 @@ pub fn signer_from_private_key(
     #[cfg(not(any(feature = "rust_native_crypto", feature = "openssl")))]
     Err(RawSignerError::NoCryptoBackend)
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::expect_used)]
+    #![allow(clippy::panic)]
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    #[test]
+    fn fix_json_pem_unescapes_newlines() {
+        let input = b"-----BEGIN PRIVATE KEY-----\\nABCD\\n-----END PRIVATE KEY-----\\n";
+        let fixed = fix_json_pem(input);
+        assert_eq!(
+            String::from_utf8(fixed).unwrap(),
+            "-----BEGIN PRIVATE KEY-----\nABCD\n-----END PRIVATE KEY-----\n"
+        );
+    }
+
+    #[test]
+    fn fix_json_pem_leaves_real_newlines_alone() {
+        let input = b"already\nclean";
+        assert_eq!(fix_json_pem(input), b"already\nclean");
+    }
+
+    #[test]
+    fn signer_from_private_key_rejects_garbage() {
+        // Whatever the backend (or absence of one), an unparseable key cannot
+        // produce a signer.
+        assert!(signer_from_private_key(b"not a key", SigningAlg::Es256).is_err());
+    }
+
+    #[test]
+    #[cfg(any(feature = "rust_native_crypto", feature = "openssl"))]
+    fn signer_from_private_key_accepts_json_escaped_pem() {
+        // A PEM whose line breaks have been escaped as the two-character
+        // sequence `\n` (as happens when a key is round-tripped through JSON) is
+        // repaired by `fix_json_pem` before parsing.
+        let pem = std::str::from_utf8(include_bytes!("../tests/fixtures/raw_signature/es256.priv"))
+            .unwrap();
+
+        let escaped = pem.replace('\n', "\\n");
+        let signer = signer_from_private_key(escaped.as_bytes(), SigningAlg::Es256).unwrap();
+        assert_eq!(signer.alg(), SigningAlg::Es256);
+    }
+}

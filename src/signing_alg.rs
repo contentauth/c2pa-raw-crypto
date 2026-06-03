@@ -161,6 +161,33 @@ mod tests {
         all(target_arch = "wasm32", not(target_os = "wasi")),
         wasm_bindgen_test
     )]
+    fn alg_deserialize() {
+        use serde::{
+            Deserialize,
+            de::{
+                IntoDeserializer,
+                value::{Error as ValueError, StrDeserializer},
+            },
+        };
+
+        let de: StrDeserializer<ValueError> = "es384".into_deserializer();
+        assert_eq!(SigningAlg::deserialize(de).unwrap(), SigningAlg::Es384);
+
+        // Case-insensitive, for backwards compatibility with the `config` crate.
+        let de: StrDeserializer<ValueError> = "ES384".into_deserializer();
+        assert_eq!(SigningAlg::deserialize(de).unwrap(), SigningAlg::Es384);
+
+        // An unknown algorithm surfaces a custom serde error.
+        let de: StrDeserializer<ValueError> = "bogus".into_deserializer();
+        let err = SigningAlg::deserialize(de).unwrap_err();
+        assert_eq!(err.to_string(), "unknown signing algorithm: bogus");
+    }
+
+    #[test]
+    #[cfg_attr(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        wasm_bindgen_test
+    )]
     fn err_impl_display() {
         assert_eq!(
             format!("{}", UnknownAlgorithmError("bogus".to_owned())),
