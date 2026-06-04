@@ -81,6 +81,47 @@ jobs:
           files: ./lcov.filtered.info
           flags: ${{ matrix.features.name }}
 
+  tests-windows-arm:
+    name: Unit tests (Windows ARM, ${{ matrix.features.name }})
+    # Windows ARM (aarch64-pc-windows-msvc) is a Tier 1A platform in
+    # c2pa-rs, so it is exercised on every commit. Code coverage is not
+    # collected here; the same per-feature coverage is already gathered on
+    # the x86_64 Windows runner in the `tests` job above.
+
+    if: |
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository ||
+      contains(github.event.pull_request.labels.*.name, 'safe to test')
+
+    runs-on: windows-11-arm
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # OpenSSL builds fine here (vendored), so all four combos run.
+        features:
+          - name: no-features
+            flags: --no-default-features
+          - name: rust-native
+            flags: --no-default-features --features rust_native_crypto
+          - name: openssl
+            flags: --no-default-features --features openssl
+          - name: all-features
+            flags: --all-features
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run unit tests
+        run: cargo test --lib ${{ matrix.features.flags }}
+
   doc-tests:
     name: Doc tests (requires nightly Rust)
     # TODO: Remove this once cargo-llvm-cov can run doc tests and generate
@@ -187,6 +228,58 @@ jobs:
       - name: Run unit tests (cross build)
         run: cross test --lib ${{ matrix.features.flags }} --target ${{ matrix.target }}
 
+  tests-android:
+    name: Build (Android, ${{ matrix.target }}, ${{ matrix.features.name }})
+    # The Android targets are Tier 2 platforms in c2pa-rs, which means
+    # build verification only (a release is blocked if the build fails).
+    # We therefore build, but do not run, the library for each target.
+
+    if: |
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository ||
+      contains(github.event.pull_request.labels.*.name, 'safe to test')
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-linux-android
+          - armv7-linux-androideabi
+          - i686-linux-android
+          - x86_64-linux-android
+        # The support tiers specify rust_native_crypto for Android, and
+        # OpenSSL cross-compilation to Android is not exercised here, so the
+        # OpenSSL-enabled combos are excluded.
+        features:
+          - name: no-features
+            flags: --no-default-features
+          - name: rust-native
+            flags: --no-default-features --features rust_native_crypto
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation toolset
+        run: cargo install cross
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      # Tier 2 requires build verification only, so we build (but do not run)
+      # the library for each Android target.
+
+      - name: Build library (cross build, build only)
+        run: cross build --lib ${{ matrix.features.flags }} --target ${{ matrix.target }}
+
   tests-ios:
     name: Unit tests (iOS simulator, ${{ matrix.features.name }})
 
@@ -248,6 +341,51 @@ jobs:
 
       - name: Run unit tests (cross build)
         run: cargo dinghy -p auto-ios-aarch64-sim -d ${{ env.device }} test --all-targets ${{ matrix.features.flags }}
+
+  tests-ios-build:
+    name: Build (iOS device, ${{ matrix.target }}, ${{ matrix.features.name }})
+    # The iOS device targets (aarch64-apple-ios, x86_64-apple-ios) are Tier 2
+    # platforms in c2pa-rs. There are no hosted iPhones in CI, so we only
+    # verify that they build; execution is covered by the iOS simulator job
+    # above.
+
+    if: |
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository ||
+      contains(github.event.pull_request.labels.*.name, 'safe to test')
+
+    runs-on: macos-14
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [aarch64-apple-ios, x86_64-apple-ios]
+        # OpenSSL builds (vendored) for iOS, so all four combos run.
+        features:
+          - name: no-features
+            flags: --no-default-features
+          - name: rust-native
+            flags: --no-default-features --features rust_native_crypto
+          - name: openssl
+            flags: --no-default-features --features openssl
+          - name: all-features
+            flags: --all-features
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88.0
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build library (build only)
+        run: cargo build --lib ${{ matrix.features.flags }} --target ${{ matrix.target }}
 
   tests-wasm:
     name: Unit tests (Wasm, ${{ matrix.features.name }})
