@@ -50,6 +50,8 @@ fn es256() {
         return;
     };
 
+    assert_eq!(signer.alg(), SigningAlg::Es256);
+
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
 
@@ -74,6 +76,8 @@ fn es384() {
         return;
     };
 
+    assert_eq!(signer.alg(), SigningAlg::Es384);
+
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
 
@@ -97,6 +101,8 @@ fn es512() {
     let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Es512)) else {
         return;
     };
+
+    assert_eq!(signer.alg(), SigningAlg::Es512);
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
@@ -123,6 +129,8 @@ fn ed25519() {
         return;
     };
 
+    assert_eq!(signer.alg(), SigningAlg::Ed25519);
+
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
 
@@ -146,6 +154,8 @@ fn ps256() {
     let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps256)) else {
         return;
     };
+
+    assert_eq!(signer.alg(), SigningAlg::Ps256);
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
@@ -171,6 +181,8 @@ fn ps384() {
         return;
     };
 
+    assert_eq!(signer.alg(), SigningAlg::Ps384);
+
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();
 
@@ -194,6 +206,8 @@ fn ps512() {
     let Some(signer) = check_signer(signer_from_private_key(private_key, SigningAlg::Ps512)) else {
         return;
     };
+
+    assert_eq!(signer.alg(), SigningAlg::Ps512);
 
     let data = b"some sample content to sign";
     let signature = signer.sign(data).unwrap();

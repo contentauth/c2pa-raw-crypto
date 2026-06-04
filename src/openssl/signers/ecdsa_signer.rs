@@ -124,6 +124,24 @@ mod tests {
     }
 
     #[test]
+    fn sign_rejects_unsupported_curve() {
+        // OpenSSL happily loads a secp256k1 key, but `sign` rejects it because
+        // it is not one of the curves this crate supports, exercising the
+        // unsupported-curve error path in `sign`.
+        let key = include_bytes!("../../../tests/fixtures/raw_signature/secp256k1.priv");
+
+        let Ok(signer) = EcdsaSigner::from_private_key(key, SigningAlg::Es256) else {
+            panic!("expected the key to load");
+        };
+
+        let Err(err) = signer.sign(b"some sample content to sign") else {
+            panic!("expected a signing error");
+        };
+
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+
+    #[test]
     fn rejects_bad_pem() {
         let Err(err) = EcdsaSigner::from_private_key(b"not a PEM key", SigningAlg::Es256) else {
             panic!("expected error");

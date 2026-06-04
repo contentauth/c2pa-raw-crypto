@@ -90,6 +90,30 @@ mod tests {
     }
 
     #[test]
+    fn wrong_length_public_key_rejected() {
+        // A well-formed SPKI carrying the Ed25519 OID, but whose BIT STRING
+        // public key is not the required 32 bytes: the length guard rejects it.
+        //
+        // SubjectPublicKeyInfo ::= SEQUENCE {
+        //   algorithm   AlgorithmIdentifier { 1.3.101.112 },
+        //   subjectPublicKey BIT STRING (here only 1 byte of key data) }
+        let spki = [
+            0x30, 0x0b, // SEQUENCE, 11 bytes
+            0x30, 0x05, // algorithm SEQUENCE, 5 bytes
+            0x06, 0x03, 0x2b, 0x65, 0x70, // OID 1.3.101.112 (Ed25519)
+            0x03, 0x02, 0x00, 0x00, // BIT STRING, 2 bytes: 0 unused bits + 1 key byte
+        ];
+        let sig = include_bytes!("../../../tests/fixtures/raw_signature/ed25519.raw_sig");
+
+        assert_eq!(
+            Ed25519Validator {}
+                .validate(sig, SAMPLE_DATA, &spki)
+                .unwrap_err(),
+            RawSignatureValidationError::InvalidPublicKey
+        );
+    }
+
+    #[test]
     fn invalid_signature_rejected() {
         // Valid Ed25519 public key, but a signature that is not 64 bytes.
         let pub_key = include_bytes!("../../../tests/fixtures/raw_signature/ed25519.pub_key");
