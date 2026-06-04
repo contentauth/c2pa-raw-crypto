@@ -105,3 +105,31 @@ impl RawSigner for EcdsaSigner {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn rejects_non_ecdsa_alg() {
+        // The algorithm is checked before the key is parsed, so any key works.
+        let key = include_bytes!("../../../tests/fixtures/raw_signature/es256.priv");
+
+        let Err(err) = EcdsaSigner::from_private_key(key, SigningAlg::Ps256) else {
+            panic!("expected error");
+        };
+        assert!(matches!(err, RawSignerError::InternalError(_)));
+    }
+
+    #[test]
+    fn rejects_bad_pem() {
+        let Err(err) = EcdsaSigner::from_private_key(b"not a PEM key", SigningAlg::Es256) else {
+            panic!("expected error");
+        };
+
+        // OpenSSL surfaces a parse failure as a crypto-library error.
+        assert!(matches!(err, RawSignerError::CryptoLibraryError(_)));
+    }
+}

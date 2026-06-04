@@ -81,6 +81,7 @@ impl RsaSigner {
         let prime1 = BigUint::from_bytes_be(pkcs1_key.prime1.as_bytes());
         let prime2 = BigUint::from_bytes_be(pkcs1_key.prime2.as_bytes());
         let primes = vec![prime1, prime2];
+
         let private_key = RsaPrivateKey::from_components(n, e, d, primes)
             .map_err(|e| RawSignerError::InvalidSigningCredentials(e.to_string()))?;
 
@@ -134,6 +135,89 @@ impl RawSigner for RsaSigner {
             RsaSigningAlg::Ps256 => SigningAlg::Ps256,
             RsaSigningAlg::Ps384 => SigningAlg::Ps384,
             RsaSigningAlg::Ps512 => SigningAlg::Ps512,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::expect_used)]
+    #![allow(clippy::panic)]
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use crate::SigningAlg;
+
+    // `RsaSigner` intentionally does not implement `Debug`, so we match the
+    // `Err` arm directly rather than using `unwrap_err`.
+
+    #[test]
+    fn rejects_invalid_utf8() {
+        let Err(err) = RsaSigner::from_private_key(&[0xff, 0xfe, 0xfd], SigningAlg::Ps256) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+
+    #[test]
+    fn rejects_non_pem() {
+        let Err(err) = RsaSigner::from_private_key(b"this is not a PEM file", SigningAlg::Ps256)
+        else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+
+    #[test]
+    fn rejects_non_rsa_key_oid() {
+        // A syntactically valid PKCS#8 PEM, but an EC key rather than RSA.
+        let ec_key = include_bytes!("../../../tests/fixtures/raw_signature/es256.priv");
+
+        let Err(err) = RsaSigner::from_private_key(ec_key, SigningAlg::Ps256) else {
+            panic!("expected error");
+        };
+
+        match err {
+            RawSignerError::InvalidSigningCredentials(m) => {
+                assert!(m.contains("unsupported private key algorithm"), "got: {m}");
+            }
+            other => panic!("expected InvalidSigningCredentials, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_multi_prime_key() {
+        // A 3-prime RSA key parses as a valid PKCS#1 key but is rejected because
+        // the `rsa` crate only supports two-prime keys.
+        let key = include_bytes!("../../../tests/fixtures/raw_signature/multiprime_rsa.priv");
+        let Err(err) = RsaSigner::from_private_key(key, SigningAlg::Ps256) else {
+            panic!("expected error");
+        };
+
+        match err {
+            RawSignerError::InvalidSigningCredentials(m) => {
+                assert!(m.contains("multi-prime RSA keys not supported"), "got: {m}");
+            }
+            other => panic!("expected InvalidSigningCredentials, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejects_non_rsa_signing_alg() {
+        // A valid RSA key, but asked to sign with a non-RSA algorithm: the
+        // `_` arm of the alg match returns an internal error.
+        let rsa_key = include_bytes!("../../../tests/fixtures/raw_signature/ps256.priv");
+        let Err(err) = RsaSigner::from_private_key(rsa_key, SigningAlg::Es256) else {
+            panic!("expected error");
+        };
+
+        match err {
+            RawSignerError::InternalError(m) => {
+                assert!(m.contains("RsaSigner should be used only"), "got: {m}");
+            }
+            other => panic!("expected InternalError, got {other:?}"),
         }
     }
 }
