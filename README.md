@@ -31,16 +31,26 @@ The toolkit requires **Rust version 1.88.0** or newer. When a newer version of R
 
 ### Supported platforms
 
-The toolkit has been tested on the following operating systems:
+This crate's [CI workflow](./.github/workflows/ci.yml) builds and tests against the platforms that the [`c2pa-rs` support tiers](https://github.com/contentauth/c2pa-rs/blob/main/docs/support-tiers.md) cover (Tiers 1A, 1B, and 2). Unlike `c2pa-rs`, this crate does not split those platforms across separate tier workflows — because it evolves more slowly, every platform below is exercised on every commit.
 
-* Windows
+The crate is built and tested on the following platforms:
+
+* Windows (`x86_64-pc-windows-msvc` and `aarch64-pc-windows-msvc`)
   * Only the MSVC build chain is supported on Windows. As discussed in [#155](https://github.com/adobe/xmp-toolkit-rs/issues/155), we would welcome a PR to enable GNU build chain support on Windows.
 
-* MacOS (Intel and Apple silicon)
+* macOS on Apple silicon (`aarch64-apple-darwin`)
 
-* Ubuntu Linux on x86 and ARM v8 (aarch64)
+* Linux on x86 (`x86_64-unknown-linux-gnu`) and ARM v8 (`aarch64-unknown-linux-gnu`)
 
-* iOS
+* Wasm in the browser (`wasm32-unknown-unknown`)
+
+* WASI (`wasm32-wasip2`)
+
+The crate is also verified on the following platforms. CI runs the full test suite on the iOS simulator and confirms that the remaining targets build, but does not run tests on physical devices:
+
+* iOS (tested on the `aarch64-apple-ios-sim` simulator; `aarch64-apple-ios` and `x86_64-apple-ios` are build-verified)
+
+* Android (`aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`, and `x86_64-linux-android` are build-verified)
 
 ## License
 
