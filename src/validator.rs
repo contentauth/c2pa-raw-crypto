@@ -133,3 +133,16 @@ impl From<crate::openssl::OpenSslMutexUnavailable> for RawSignatureValidationErr
         Self::InternalError(err.to_string())
     }
 }
+
+#[cfg(test)]
+#[cfg(feature = "openssl")]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mutex_unavailable_maps_to_internal_error() {
+        // A poisoned OpenSSL FFI mutex surfaces as an internal error.
+        let err: RawSignatureValidationError = crate::openssl::OpenSslMutexUnavailable.into();
+        assert!(matches!(err, RawSignatureValidationError::InternalError(_)));
+    }
+}

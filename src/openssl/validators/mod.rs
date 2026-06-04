@@ -104,10 +104,30 @@ pub(crate) fn validator_for_sig_and_hash_algs(
         }
     }
 
-    // Handle ED25519.
-    if sig_alg == ED25519_OID.as_bytes() {
-        return Some(Box::new(Ed25519Validator {}));
-    }
-
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::oids::*;
+
+    #[test]
+    fn validator_by_signature_alg_oid() {
+        // These OIDs identify the signature algorithm directly, so a validator
+        // resolves regardless of the (here empty) hash-algorithm OID.
+        let resolves = |sig_oid: &crate::Oid| {
+            super::validator_for_sig_and_hash_algs(sig_oid.as_bytes(), &[]).is_some()
+        };
+
+        assert!(resolves(&ECDSA_WITH_SHA256_OID));
+        assert!(resolves(&ECDSA_WITH_SHA384_OID));
+        assert!(resolves(&ECDSA_WITH_SHA512_OID));
+        assert!(resolves(&SHA256_WITH_RSAENCRYPTION_OID));
+        assert!(resolves(&SHA384_WITH_RSAENCRYPTION_OID));
+        assert!(resolves(&SHA512_WITH_RSAENCRYPTION_OID));
+        assert!(resolves(&ED25519_OID));
+
+        // An unrecognized signature/hash OID pair resolves to nothing.
+        assert!(super::validator_for_sig_and_hash_algs(&[0, 0, 0, 0], &[0, 0]).is_none());
+    }
 }
