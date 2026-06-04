@@ -1,6 +1,6 @@
 # c2pa_raw_crypto
 
-[![CI](https://github.com/contentauth/c2pa-raw-crypto/actions/workflows/ci.yml/badge.svg)](https://github.com/contentauth/c2pa-raw-crypto/actions/workflows/ci.yml) [![Latest Version](https://img.shields.io/crates/v/c2pa-raw-crypto.svg)](https://crates.io/crates/c2pa-raw-crypto) [![docs.rs](https://img.shields.io/docsrs/c2pa-raw-crypto)](https://docs.rs/c2pa-raw-crypto/) [![codecov](https://codecov.io/gh/contentauth/c2pa-raw-crypto/branch/main/graph/badge.svg?token=z1yA0Y6HZK)](https://codecov.io/gh/contentauth/c2pa-raw-crypto)
+[![CI](https://github.com/contentauth/c2pa-raw-crypto/actions/workflows/ci.yml/badge.svg)](https://github.com/contentauth/c2pa-raw-crypto/actions/workflows/ci.yml) [![Latest Version](https://img.shields.io/crates/v/c2pa-raw-crypto.svg)](https://crates.io/crates/c2pa-raw-crypto) [![docs.rs](https://img.shields.io/docsrs/c2pa_raw_crypto)](https://docs.rs/c2pa_raw_crypto/) [![codecov](https://codecov.io/gh/contentauth/c2pa-raw-crypto/branch/main/graph/badge.svg?token=z1yA0Y6HZK)](https://codecov.io/gh/contentauth/c2pa-raw-crypto)
 
 Raw cryptographic signing and validation primitives for [C2PA](https://c2pa.org).
 
