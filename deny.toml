@@ -13,7 +13,9 @@ targets = [
 ]
 
 [advisories]
-ignore = []
+ignore = [
+  "RUSTSEC-2023-0071", # rsa Marvin Attack: (https://jira.corp.adobe.com/browse/CAI-5104)
+]
 version = 2
 yanked = "deny"
 

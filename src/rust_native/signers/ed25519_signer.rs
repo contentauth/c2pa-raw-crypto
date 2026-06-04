@@ -55,3 +55,30 @@ impl RawSigner for Ed25519Signer {
         64
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn rejects_invalid_utf8() {
+        let Err(err) = Ed25519Signer::from_private_key(&[0xff, 0xfe, 0xfd]) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+
+    #[test]
+    fn rejects_bad_pem() {
+        // Valid UTF-8 and a PEM frame, but not a usable key.
+        let bad = b"-----BEGIN PRIVATE KEY-----\nMA==\n-----END PRIVATE KEY-----\n";
+
+        let Err(err) = Ed25519Signer::from_private_key(bad) else {
+            panic!("expected error");
+        };
+        assert!(matches!(err, RawSignerError::InvalidSigningCredentials(_)));
+    }
+}

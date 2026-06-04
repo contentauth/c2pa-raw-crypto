@@ -15,11 +15,31 @@
 use wasm_bindgen_test::wasm_bindgen_test;
 
 use crate::{
-    RawSignatureValidationError, SigningAlg, validator_for_sig_and_hash_algs,
-    validator_for_signing_alg,
+    RawSignatureValidationError, RawSignatureValidator, SigningAlg,
+    validator_for_sig_and_hash_algs, validator_for_signing_alg,
 };
 
 const SAMPLE_DATA: &[u8] = b"some sample content to sign";
+
+/// Unwraps the validator when a crypto backend is compiled in.
+///
+/// When neither the `rust_native_crypto` nor the `openssl` feature is enabled,
+/// no validator is available: asserts that none was returned and yields `None`
+/// so the test can stop early.
+fn check_validator(
+    validator: Option<Box<dyn RawSignatureValidator>>,
+) -> Option<Box<dyn RawSignatureValidator>> {
+    #[cfg(any(feature = "rust_native_crypto", feature = "openssl"))]
+    {
+        Some(validator.unwrap())
+    }
+
+    #[cfg(not(any(feature = "rust_native_crypto", feature = "openssl")))]
+    {
+        assert!(validator.is_none());
+        None
+    }
+}
 
 #[test]
 #[cfg_attr(
@@ -30,7 +50,9 @@ fn es256() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/es256.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es256.pub_key");
 
-    let validator = validator_for_signing_alg(SigningAlg::Es256).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256)) else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -45,7 +67,9 @@ fn es256_bad_signature() {
     signature[10] = 10;
 
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es256.pub_key");
-    let validator = validator_for_signing_alg(SigningAlg::Es256).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256)) else {
+        return;
+    };
 
     assert_eq!(
         validator
@@ -67,7 +91,9 @@ fn es256_bad_data() {
     let mut data = SAMPLE_DATA.to_vec();
     data[10] = 0;
 
-    let validator = validator_for_signing_alg(SigningAlg::Es256).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es256)) else {
+        return;
+    };
 
     assert_eq!(
         validator.validate(signature, &data, pub_key).unwrap_err(),
@@ -84,7 +110,9 @@ fn es384() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/es384.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es384.pub_key");
 
-    let validator = validator_for_signing_alg(SigningAlg::Es384).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es384)) else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -94,7 +122,9 @@ fn es512() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/es512.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es512.pub_key");
 
-    let validator = validator_for_signing_alg(SigningAlg::Es512).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Es512)) else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -107,7 +137,9 @@ fn ed25519() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/ed25519.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ed25519.pub_key");
 
-    let validator = validator_for_signing_alg(SigningAlg::Ed25519).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ed25519)) else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -124,7 +156,9 @@ fn ed25519_bad_data() {
     data[5] = 10;
     data[6] = 11;
 
-    let validator = validator_for_signing_alg(SigningAlg::Ed25519).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ed25519)) else {
+        return;
+    };
 
     assert_eq!(
         validator.validate(signature, &data, pub_key).unwrap_err(),
@@ -141,7 +175,9 @@ fn ps256() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/ps256.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ps256.pub_key");
 
-    let validator = validator_for_signing_alg(SigningAlg::Ps256).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256)) else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -156,7 +192,9 @@ fn ps256_bad_signature() {
     signature[10] = 10;
 
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ps256.pub_key");
-    let validator = validator_for_signing_alg(SigningAlg::Ps256).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256)) else {
+        return;
+    };
 
     assert_eq!(
         validator
@@ -178,7 +216,9 @@ fn ps256_bad_data() {
     let mut data = SAMPLE_DATA.to_vec();
     data[10] = 0;
 
-    let validator = validator_for_signing_alg(SigningAlg::Ps256).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps256)) else {
+        return;
+    };
 
     assert_eq!(
         validator.validate(signature, &data, pub_key).unwrap_err(),
@@ -195,7 +235,9 @@ fn ps384() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/ps384.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ps384.pub_key");
 
-    let validator = validator_for_signing_alg(SigningAlg::Ps384).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps384)) else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -208,7 +250,9 @@ fn ps512() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/ps512.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/ps512.pub_key");
 
-    let validator = validator_for_signing_alg(SigningAlg::Ps512).unwrap();
+    let Some(validator) = check_validator(validator_for_signing_alg(SigningAlg::Ps512)) else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -235,7 +279,10 @@ fn legacy_rs256() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/legacy/rs256.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/legacy/rs256.pub_key");
 
-    let validator = validator_for_sig_and_hash_algs(&RSA_OID, &SHA256_OID).unwrap();
+    let Some(validator) = check_validator(validator_for_sig_and_hash_algs(&RSA_OID, &SHA256_OID))
+    else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -251,7 +298,10 @@ fn legacy_rs256_bad_signature() {
     signature[10] = 10;
 
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/legacy/rs256.pub_key");
-    let validator = validator_for_sig_and_hash_algs(&RSA_OID, &SHA256_OID).unwrap();
+    let Some(validator) = check_validator(validator_for_sig_and_hash_algs(&RSA_OID, &SHA256_OID))
+    else {
+        return;
+    };
 
     assert_eq!(
         validator
@@ -273,7 +323,10 @@ fn legacy_rs256_bad_data() {
     let mut data = SAMPLE_DATA.to_vec();
     data[10] = 0;
 
-    let validator = validator_for_sig_and_hash_algs(&RSA_OID, &SHA256_OID).unwrap();
+    let Some(validator) = check_validator(validator_for_sig_and_hash_algs(&RSA_OID, &SHA256_OID))
+    else {
+        return;
+    };
 
     assert_eq!(
         validator.validate(signature, &data, pub_key).unwrap_err(),
@@ -290,7 +343,10 @@ fn rs384() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/legacy/rs384.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/legacy/rs384.pub_key");
 
-    let validator = validator_for_sig_and_hash_algs(&RSA_OID, &SHA384_OID).unwrap();
+    let Some(validator) = check_validator(validator_for_sig_and_hash_algs(&RSA_OID, &SHA384_OID))
+    else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -303,7 +359,10 @@ fn rs512() {
     let signature = include_bytes!("../../tests/fixtures/raw_signature/legacy/rs512.raw_sig");
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/legacy/rs512.pub_key");
 
-    let validator = validator_for_sig_and_hash_algs(&RSA_OID, &SHA512_OID).unwrap();
+    let Some(validator) = check_validator(validator_for_sig_and_hash_algs(&RSA_OID, &SHA512_OID))
+    else {
+        return;
+    };
     validator.validate(signature, SAMPLE_DATA, pub_key).unwrap();
 }
 
@@ -338,20 +397,59 @@ fn test_get_by_sig_and_alg() {
     let sha384 = Oid::new(sha384_c.as_bytes());
     let sha512 = Oid::new(sha512_c.as_bytes());
 
-    assert!(validator_for_sig_and_hash_algs(&rsa_oid, &sha256).is_some());
-    assert!(validator_for_sig_and_hash_algs(&rsa_oid, &sha384).is_some());
-    assert!(validator_for_sig_and_hash_algs(&rsa_oid, &sha512).is_some());
+    // Each supported OID pair resolves to a validator when a crypto backend is
+    // compiled in. With neither `rust_native_crypto` nor `openssl` enabled, no
+    // validator is available for any pair.
+    #[cfg(any(feature = "rust_native_crypto", feature = "openssl"))]
+    let available = true;
+    #[cfg(not(any(feature = "rust_native_crypto", feature = "openssl")))]
+    let available = false;
 
-    assert!(validator_for_sig_and_hash_algs(&rsa_pss_oid, &sha256).is_some());
-    assert!(validator_for_sig_and_hash_algs(&rsa_pss_oid, &sha384).is_some());
-    assert!(validator_for_sig_and_hash_algs(&rsa_pss_oid, &sha512).is_some());
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&rsa_oid, &sha256).is_some(),
+        available
+    );
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&rsa_oid, &sha384).is_some(),
+        available
+    );
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&rsa_oid, &sha512).is_some(),
+        available
+    );
 
-    assert!(validator_for_sig_and_hash_algs(&ec_public_key_oid, &sha256).is_some());
-    assert!(validator_for_sig_and_hash_algs(&ec_public_key_oid, &sha384).is_some());
-    assert!(validator_for_sig_and_hash_algs(&ec_public_key_oid, &sha512).is_some());
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&rsa_pss_oid, &sha256).is_some(),
+        available
+    );
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&rsa_pss_oid, &sha384).is_some(),
+        available
+    );
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&rsa_pss_oid, &sha512).is_some(),
+        available
+    );
 
-    assert!(validator_for_sig_and_hash_algs(&ed25519_oid, &sha512).is_some());
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&ec_public_key_oid, &sha256).is_some(),
+        available
+    );
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&ec_public_key_oid, &sha384).is_some(),
+        available
+    );
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&ec_public_key_oid, &sha512).is_some(),
+        available
+    );
 
+    assert_eq!(
+        validator_for_sig_and_hash_algs(&ed25519_oid, &sha512).is_some(),
+        available
+    );
+
+    // An unknown OID never resolves, regardless of the backend.
     let test_fail = Oid::new(&[0, 0, 0, 0]);
     assert!(validator_for_sig_and_hash_algs(&test_fail, &sha512).is_none());
 }

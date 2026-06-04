@@ -36,3 +36,26 @@ impl RawSignatureValidator for Ed25519Validator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    const SAMPLE_DATA: &[u8] = b"some sample content to sign";
+
+    #[test]
+    fn unparseable_public_key_is_crypto_error() {
+        let sig = include_bytes!("../../../tests/fixtures/raw_signature/ed25519.raw_sig");
+
+        let err = Ed25519Validator {}
+            .validate(sig, SAMPLE_DATA, &[0x00, 0x01, 0x02])
+            .unwrap_err();
+
+        assert!(matches!(
+            err,
+            RawSignatureValidationError::CryptoLibraryError(_)
+        ));
+    }
+}
