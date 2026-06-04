@@ -47,3 +47,19 @@ impl RawSigner for Ed25519Signer {
         64
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn rejects_bad_pem() {
+        let Err(err) = Ed25519Signer::from_private_key(b"not a PEM key") else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::CryptoLibraryError(_)));
+    }
+}

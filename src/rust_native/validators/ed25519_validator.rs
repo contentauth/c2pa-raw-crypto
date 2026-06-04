@@ -53,3 +53,52 @@ impl RawSignatureValidator for Ed25519Validator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    const SAMPLE_DATA: &[u8] = b"some sample content to sign";
+
+    #[test]
+    fn unparseable_public_key_rejected() {
+        let sig = include_bytes!("../../../tests/fixtures/raw_signature/ed25519.raw_sig");
+
+        assert_eq!(
+            Ed25519Validator {}
+                .validate(sig, SAMPLE_DATA, &[0x00, 0x01, 0x02])
+                .unwrap_err(),
+            RawSignatureValidationError::InvalidPublicKey
+        );
+    }
+
+    #[test]
+    fn wrong_algorithm_public_key_rejected() {
+        // A well-formed SPKI, but for an EC key rather than Ed25519: the OID
+        // guard rejects it.
+        let sig = include_bytes!("../../../tests/fixtures/raw_signature/ed25519.raw_sig");
+
+        let ec_pub_key = include_bytes!("../../../tests/fixtures/raw_signature/es256.pub_key");
+        assert_eq!(
+            Ed25519Validator {}
+                .validate(sig, SAMPLE_DATA, ec_pub_key)
+                .unwrap_err(),
+            RawSignatureValidationError::InvalidPublicKey
+        );
+    }
+
+    #[test]
+    fn invalid_signature_rejected() {
+        // Valid Ed25519 public key, but a signature that is not 64 bytes.
+        let pub_key = include_bytes!("../../../tests/fixtures/raw_signature/ed25519.pub_key");
+
+        assert_eq!(
+            Ed25519Validator {}
+                .validate(&[0u8; 8], SAMPLE_DATA, pub_key)
+                .unwrap_err(),
+            RawSignatureValidationError::InvalidSignature
+        );
+    }
+}

@@ -54,22 +54,18 @@ impl RsaSigner {
 
         let mut pk_builder = RsaPrivateKeyBuilder::new(n, e, d)?;
 
-        if let Some(p) = po {
-            if let Some(q) = qo {
-                pk_builder = pk_builder.set_factors(p.to_owned()?, q.to_owned()?)?;
-            }
+        if let Some(p) = po
+            && let Some(q) = qo
+        {
+            pk_builder = pk_builder.set_factors(p.to_owned()?, q.to_owned()?)?;
         }
 
-        if let Some(dmp1) = dmp1o {
-            if let Some(dmq1) = dmq1o {
-                if let Some(iqmp) = iqmpo {
-                    pk_builder = pk_builder.set_crt_params(
-                        dmp1.to_owned()?,
-                        dmq1.to_owned()?,
-                        iqmp.to_owned()?,
-                    )?;
-                }
-            }
+        if let Some(dmp1) = dmp1o
+            && let Some(dmq1) = dmq1o
+            && let Some(iqmp) = iqmpo
+        {
+            pk_builder =
+                pk_builder.set_crt_params(dmp1.to_owned()?, dmq1.to_owned()?, iqmp.to_owned()?)?;
         }
 
         let private_key = PKey::from_rsa(pk_builder.build())?;
@@ -134,5 +130,32 @@ impl RawSigner for RsaSigner {
             RsaSigningAlg::Ps384 => SigningAlg::Ps384,
             RsaSigningAlg::Ps512 => SigningAlg::Ps512,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn rejects_non_rsa_alg() {
+        // A valid RSA key, but a non-RSA algorithm reaches the `_` match arm.
+        let key = include_bytes!("../../../tests/fixtures/raw_signature/ps256.priv");
+        let Err(err) = RsaSigner::from_private_key(key, SigningAlg::Es256) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InternalError(_)));
+    }
+
+    #[test]
+    fn rejects_bad_pem() {
+        let Err(err) = RsaSigner::from_private_key(b"not a PEM key", SigningAlg::Ps256) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::CryptoLibraryError(_)));
     }
 }

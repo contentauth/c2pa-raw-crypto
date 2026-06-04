@@ -119,3 +119,40 @@ impl RawSignatureValidator for EcdsaValidator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    const SAMPLE_DATA: &[u8] = b"some sample content to sign";
+
+    #[test]
+    fn invalid_public_key_rejected() {
+        // Bytes that are not a parseable EC SubjectPublicKeyInfo: the curve
+        // cannot be determined.
+        let sig = include_bytes!("../../../tests/fixtures/raw_signature/es256.raw_sig");
+
+        assert_eq!(
+            EcdsaValidator::Es256
+                .validate(sig, SAMPLE_DATA, &[0x00, 0x01, 0x02])
+                .unwrap_err(),
+            RawSignatureValidationError::InvalidPublicKey
+        );
+    }
+
+    #[test]
+    fn invalid_signature_rejected() {
+        // Valid P-256 public key, but a signature too short to be a valid
+        // fixed-size ECDSA signature.
+        let pub_key = include_bytes!("../../../tests/fixtures/raw_signature/es256.pub_key");
+
+        assert_eq!(
+            EcdsaValidator::Es256
+                .validate(&[0u8; 8], SAMPLE_DATA, pub_key)
+                .unwrap_err(),
+            RawSignatureValidationError::InvalidSignature
+        );
+    }
+}

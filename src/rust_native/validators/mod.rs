@@ -366,6 +366,36 @@ mod tests {
         all(target_arch = "wasm32", not(target_os = "wasi")),
         wasm_bindgen_test
     )]
+    fn validator_by_signature_alg_oid() {
+        use crate::oids::*;
+
+        // These OIDs identify the signature algorithm directly, so a validator
+        // resolves regardless of the (here empty) hash-algorithm OID.
+        let resolves = |sig_oid: &crate::Oid| {
+            rust_native::validators::validator_for_sig_and_hash_algs(sig_oid.as_bytes(), &[])
+                .is_some()
+        };
+
+        assert!(resolves(&ECDSA_WITH_SHA256_OID));
+        assert!(resolves(&ECDSA_WITH_SHA384_OID));
+        assert!(resolves(&ECDSA_WITH_SHA512_OID));
+        assert!(resolves(&SHA256_WITH_RSAENCRYPTION_OID));
+        assert!(resolves(&SHA384_WITH_RSAENCRYPTION_OID));
+        assert!(resolves(&SHA512_WITH_RSAENCRYPTION_OID));
+        assert!(resolves(&ED25519_OID));
+
+        // An unrecognized signature/hash OID pair resolves to nothing.
+        assert!(
+            rust_native::validators::validator_for_sig_and_hash_algs(&[0, 0, 0, 0], &[0, 0])
+                .is_none()
+        );
+    }
+
+    #[test]
+    #[cfg_attr(
+        all(target_arch = "wasm32", not(target_os = "wasi")),
+        wasm_bindgen_test
+    )]
     fn legacy_rs256() {
         let signature =
             include_bytes!("../../../tests/fixtures/raw_signature/legacy/rs256.raw_sig");
