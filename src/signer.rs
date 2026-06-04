@@ -151,6 +151,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "openssl")]
+    fn mutex_unavailable_maps_to_internal_error() {
+        // A poisoned OpenSSL FFI mutex surfaces as an internal error.
+        let err: RawSignerError = crate::openssl::OpenSslMutexUnavailable.into();
+        assert!(matches!(err, RawSignerError::InternalError(_)));
+    }
+
+    #[test]
     fn signer_from_private_key_rejects_garbage() {
         // Whatever the backend (or absence of one), an unparseable key cannot
         // produce a signer.

@@ -106,11 +106,6 @@ pub(crate) fn validator_for_sig_and_hash_algs(
         }
     }
 
-    // Handle ED25519.
-    if sig_alg == ED25519_OID.as_bytes() {
-        return Some(Box::new(Ed25519Validator {}));
-    }
-
     None
 }
 
