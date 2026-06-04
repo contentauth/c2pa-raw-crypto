@@ -43,3 +43,22 @@ impl<'a> From<&'a [u8]> for Oid<'a> {
         Self::new(content_octets)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_and_as_bytes_round_trip() {
+        let octets: &[u8] = &[0x2a, 0x86, 0x48];
+        assert_eq!(Oid::new(octets).as_bytes(), octets);
+    }
+
+    #[test]
+    fn from_slice_matches_new() {
+        let octets: &[u8] = &[1, 2, 3];
+        let oid: Oid = octets.into();
+        assert_eq!(oid, Oid::new(octets));
+        assert_eq!(oid.as_bytes(), octets);
+    }
+}

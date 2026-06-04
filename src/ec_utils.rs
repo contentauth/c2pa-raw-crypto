@@ -213,3 +213,212 @@ pub fn ec_curve_from_private_key_der(private_key: &[u8]) -> Option<EcdsaCurve> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::expect_used)]
+    #![allow(clippy::panic)]
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use crate::RawSignerError;
+
+    /// Builds a DER `SEQUENCE { r INTEGER, s INTEGER }` from raw `r`/`s`
+    /// content octets. Lengths are kept short-form (< 128 bytes) for test
+    /// simplicity.
+    fn der_sig(r: &[u8], s: &[u8]) -> Vec<u8> {
+        let int = |v: &[u8]| {
+            let mut out = vec![0x02u8, v.len() as u8];
+            out.extend_from_slice(v);
+            out
+        };
+
+        let body: Vec<u8> = int(r).into_iter().chain(int(s)).collect();
+
+        let mut out = vec![0x30u8, body.len() as u8];
+        out.extend_from_slice(&body);
+        out
+    }
+
+    #[test]
+    fn p1363_sig_len_per_curve() {
+        assert_eq!(EcdsaCurve::P256.p1363_sig_len(), 64);
+        assert_eq!(EcdsaCurve::P384.p1363_sig_len(), 96);
+        assert_eq!(EcdsaCurve::P521.p1363_sig_len(), 132);
+    }
+
+    #[test]
+    fn parse_ec_der_sig_round_trip() {
+        let sig = der_sig(&[0x01, 0x02], &[0x03]);
+        let comps = parse_ec_der_sig(&sig).expect("valid DER");
+        assert_eq!(comps.r, &[0x01, 0x02]);
+        assert_eq!(comps.s, &[0x03]);
+    }
+
+    #[test]
+    fn parse_ec_der_sig_rejects_non_sequence() {
+        // Leading tag is INTEGER, not SEQUENCE.
+        assert!(parse_ec_der_sig(&[0x02, 0x01, 0x00]).is_none());
+    }
+
+    #[test]
+    fn parse_ec_der_sig_rejects_truncated() {
+        // SEQUENCE claims 4 content bytes but only 1 is present.
+        assert!(parse_ec_der_sig(&[0x30, 0x04, 0x02]).is_none());
+    }
+
+    #[test]
+    fn read_der_length_short_and_long_form() {
+        // Short form: high bit clear, value is the length itself.
+        assert_eq!(read_der_length(&[0x7f]), Some((0x7f, 1)));
+
+        // Long form: 0x82 => two subsequent length octets => 0x0100 = 256.
+        assert_eq!(read_der_length(&[0x82, 0x01, 0x00]), Some((256, 3)));
+    }
+
+    #[test]
+    fn read_der_length_rejects_indefinite_and_oversize() {
+        // Indefinite length (0x80) is invalid in DER.
+        assert!(read_der_length(&[0x80]).is_none());
+
+        // More length octets than a usize can hold.
+        let oversize = 0x80u8 | ((core::mem::size_of::<usize>() + 1) as u8);
+        assert!(read_der_length(&[oversize, 0, 0, 0, 0, 0, 0, 0, 0, 0]).is_none());
+
+        // Empty input.
+        assert!(read_der_length(&[]).is_none());
+    }
+
+    #[test]
+    fn der_to_p1363_rejects_invalid_der() {
+        let err = der_to_p1363(&[0x00], 64).unwrap_err();
+        assert!(matches!(err, RawSignerError::InternalError(m) if m == "invalid DER signature"));
+    }
+
+    #[test]
+    fn der_to_p1363_rejects_unsupported_sig_len() {
+        let sig = der_sig(&[0x01], &[0x02]);
+        let err = der_to_p1363(&sig, 65).unwrap_err();
+
+        assert!(
+            matches!(err, RawSignerError::InternalError(m) if m == "unsupported algorithm for der_to_p1363")
+        );
+    }
+
+    #[test]
+    fn der_to_p1363_left_pads_short_components() {
+        // r and s are far shorter than the field size, so both are left-padded
+        // with zeros out to 32 bytes each (64 bytes total for P-256).
+        let sig = der_sig(&[0x01, 0x02], &[0x03]);
+        let p1363 = der_to_p1363(&sig, 64).unwrap();
+
+        assert_eq!(p1363.len(), 64);
+
+        // r occupies the first 32 bytes, right-aligned.
+        assert_eq!(p1363[30], 0x01);
+        assert_eq!(p1363[31], 0x02);
+        assert_eq!(p1363[..30], [0u8; 30]);
+
+        // s occupies the second 32 bytes, right-aligned.
+        assert_eq!(p1363[63], 0x03);
+        assert_eq!(p1363[32..63], [0u8; 31]);
+    }
+
+    #[test]
+    fn der_to_p1363_truncates_long_components() {
+        // A 33-byte r (DER's leading 0x00 sign byte on a high-bit-set value) is
+        // one byte too long for P-256 and must have its leading byte dropped.
+        let mut r = vec![0x00u8];
+        r.extend(std::iter::repeat_n(0xab, 32));
+        let sig = der_sig(&r, &[0x05]);
+
+        let p1363 = der_to_p1363(&sig, 64).unwrap();
+        assert_eq!(p1363.len(), 64);
+
+        // The leading 0x00 is gone; the 32 0xab bytes remain as r.
+        assert_eq!(p1363[..32], [0xabu8; 32]);
+    }
+
+    #[test]
+    fn ec_curve_from_public_key_der_recognizes_supported_curves() {
+        let p256 = include_bytes!("../tests/fixtures/raw_signature/es256.pub_key");
+        let p384 = include_bytes!("../tests/fixtures/raw_signature/es384.pub_key");
+        let p521 = include_bytes!("../tests/fixtures/raw_signature/es512.pub_key");
+
+        assert!(matches!(
+            ec_curve_from_public_key_der(p256),
+            Some(EcdsaCurve::P256)
+        ));
+
+        assert!(matches!(
+            ec_curve_from_public_key_der(p384),
+            Some(EcdsaCurve::P384)
+        ));
+
+        assert!(matches!(
+            ec_curve_from_public_key_der(p521),
+            Some(EcdsaCurve::P521)
+        ));
+    }
+
+    #[test]
+    fn ec_curve_from_public_key_der_rejects_non_ec_and_garbage() {
+        // A valid SPKI, but an RSA key rather than an EC key.
+        let rsa = include_bytes!("../tests/fixtures/raw_signature/ps256.pub_key");
+        assert!(ec_curve_from_public_key_der(rsa).is_none());
+
+        // Not parseable as SPKI at all.
+        assert!(ec_curve_from_public_key_der(&[0x00, 0x01, 0x02]).is_none());
+    }
+
+    #[test]
+    fn ec_curve_from_public_key_der_rejects_unsupported_curve() {
+        // A valid EC SPKI, but on secp256k1 — not one of the supported NIST
+        // curves, so the named-curve OID matches none of them.
+        let k1 = include_bytes!("../tests/fixtures/raw_signature/secp256k1.pub_key");
+        assert!(ec_curve_from_public_key_der(k1).is_none());
+    }
+
+    // Decoding the PEM fixtures to DER needs `SecretDocument::from_pem`, which
+    // requires the `pem` feature that the rust-native crypto deps enable.
+    #[test]
+    #[cfg(feature = "rust_native_crypto")]
+    fn ec_curve_from_private_key_der_recognizes_supported_curves() {
+        for (pem, expect_256) in [
+            (
+                include_bytes!("../tests/fixtures/raw_signature/es256.priv").as_slice(),
+                EcdsaCurve::P256,
+            ),
+            (
+                include_bytes!("../tests/fixtures/raw_signature/es384.priv").as_slice(),
+                EcdsaCurve::P384,
+            ),
+            (
+                include_bytes!("../tests/fixtures/raw_signature/es512.priv").as_slice(),
+                EcdsaCurve::P521,
+            ),
+        ] {
+            let pem_str = std::str::from_utf8(pem).unwrap();
+            let (_label, der) = pkcs8::der::SecretDocument::from_pem(pem_str).unwrap();
+            let curve = ec_curve_from_private_key_der(der.as_bytes()).expect("supported curve");
+            assert_eq!(curve.p1363_sig_len(), expect_256.p1363_sig_len());
+        }
+    }
+
+    #[test]
+    fn ec_curve_from_private_key_der_rejects_garbage() {
+        assert!(ec_curve_from_private_key_der(&[0x00, 0x01, 0x02]).is_none());
+    }
+
+    // PEM decoding needs the `pem` feature enabled by the rust-native deps.
+    #[test]
+    #[cfg(feature = "rust_native_crypto")]
+    fn ec_curve_from_private_key_der_rejects_unsupported_curve() {
+        // A valid PKCS#8 EC key on secp256k1: parses fine, but its curve OID
+        // matches none of the supported NIST curves.
+        let pem = include_bytes!("../tests/fixtures/raw_signature/secp256k1.priv");
+        let pem_str = std::str::from_utf8(pem).unwrap();
+        let (_label, der) = pkcs8::der::SecretDocument::from_pem(pem_str).unwrap();
+        assert!(ec_curve_from_private_key_der(der.as_bytes()).is_none());
+    }
+}

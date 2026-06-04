@@ -132,3 +132,30 @@ impl RawSigner for RsaSigner {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::panic)]
+
+    use super::*;
+
+    #[test]
+    fn rejects_non_rsa_alg() {
+        // A valid RSA key, but a non-RSA algorithm reaches the `_` match arm.
+        let key = include_bytes!("../../../tests/fixtures/raw_signature/ps256.priv");
+        let Err(err) = RsaSigner::from_private_key(key, SigningAlg::Es256) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::InternalError(_)));
+    }
+
+    #[test]
+    fn rejects_bad_pem() {
+        let Err(err) = RsaSigner::from_private_key(b"not a PEM key", SigningAlg::Ps256) else {
+            panic!("expected error");
+        };
+
+        assert!(matches!(err, RawSignerError::CryptoLibraryError(_)));
+    }
+}
