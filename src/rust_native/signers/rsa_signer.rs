@@ -11,8 +11,10 @@
 // specific language governing permissions and limitations under
 // each license.
 
-use const_oid::ObjectIdentifier;
-use pkcs8::der::{SecretDocument, pem::PemLabel};
+use pkcs8::{
+    ObjectIdentifier,
+    der::{SecretDocument, pem::PemLabel},
+};
 use rsa::{
     BigUint, RsaPrivateKey,
     pkcs8::PrivateKeyInfo,
