@@ -74,9 +74,10 @@ impl RawSigner for EcdsaSigner {
 
         // `private_key_to_pkcs8` returns a fresh copy of the secret key bytes;
         // wrap it so the buffer is zeroized when it goes out of scope.
-        let pkcs8_private_key = Zeroizing::new(private_key.private_key_to_pkcs8().map_err(|_| {
-            RawSignerError::InvalidSigningCredentials("unsupported EC curve".to_string())
-        })?);
+        let pkcs8_private_key =
+            Zeroizing::new(private_key.private_key_to_pkcs8().map_err(|_| {
+                RawSignerError::InvalidSigningCredentials("unsupported EC curve".to_string())
+            })?);
 
         let curve = ec_curve_from_private_key_der(&pkcs8_private_key).ok_or(
             RawSignerError::InvalidSigningCredentials("unsupported EC curve".to_string()),
