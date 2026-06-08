@@ -33,6 +33,7 @@ pkcs8 = "0.10.2"
 serde = { version = "1.0.225", features = ["derive"] }
 spki = "0.7.3"
 thiserror = "2.0.17"
+zeroize = { version = "1.8", features = ["derive"] }
 
 # Rust-native crypto backend (default).
 ecdsa = { version = "0.16.9", default-features = false, optional = true }

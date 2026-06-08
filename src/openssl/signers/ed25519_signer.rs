@@ -20,6 +20,10 @@ use crate::{RawSigner, RawSignerError, SigningAlg, openssl::OpenSslMutex};
 
 /// Implements [`RawSigner`] trait using OpenSSL's implementation of
 /// Edwards Curve encryption.
+///
+/// The private key is held in an OpenSSL `PKey<Private>`. OpenSSL owns this key
+/// material and clears it when the key is freed (`EVP_PKEY_free`), so the
+/// `zeroize` crate cannot (and need not) be applied to the handle itself.
 pub(crate) struct Ed25519Signer {
     private_key: PKey<Private>,
 }

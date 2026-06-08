@@ -28,6 +28,10 @@ enum RsaSigningAlg {
 
 /// Implements [`RawSigner`] trait using OpenSSL's implementation of SHA256 +
 /// RSA encryption.
+///
+/// The private key is held in an OpenSSL `PKey<Private>`. OpenSSL owns this key
+/// material and clears it when the key is freed (`EVP_PKEY_free`), so the
+/// `zeroize` crate cannot (and need not) be applied to the handle itself.
 pub(crate) struct RsaSigner {
     alg: RsaSigningAlg,
     private_key: PKey<Private>,
