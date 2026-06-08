@@ -21,6 +21,7 @@ use rsa::{
     signature::{RandomizedSigner, SignatureEncoding},
     traits::PublicKeyParts,
 };
+use zeroize::ZeroizeOnDrop;
 
 use crate::{RawSigner, RawSignerError, SigningAlg};
 
@@ -32,7 +33,13 @@ enum RsaSigningAlg {
 
 /// Implements [`RawSigner`] trait using `rsa` crate's implementation of SHA256
 /// + RSA encryption.
+///
+/// The private key material is held in an `rsa::RsaPrivateKey`, which is
+/// zeroized when this signer is dropped.
+#[derive(ZeroizeOnDrop)]
 pub(crate) struct RsaSigner {
+    // `alg` carries no secret material, so it is skipped when zeroizing.
+    #[zeroize(skip)]
     alg: RsaSigningAlg,
     private_key: RsaPrivateKey,
 }

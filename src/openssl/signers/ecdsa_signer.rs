@@ -17,6 +17,7 @@ use openssl::{
     pkey::{PKey, Private},
     sign::Signer,
 };
+use zeroize::Zeroizing;
 
 use crate::{
     RawSigner, RawSignerError, SigningAlg,
@@ -32,6 +33,12 @@ enum EcdsaSigningAlg {
 
 /// Implements [`RawSigner`] trait using OpenSSL's implementation of
 /// ECDSA encryption.
+///
+/// The private key is held in an OpenSSL `EcKey<Private>`. OpenSSL owns this
+/// key material and clears it when the key is freed (`EC_KEY_free`), so the
+/// `zeroize` crate cannot (and need not) be applied to the handle itself.
+/// Transient secret copies that this crate creates (see `sign`) are wrapped in
+/// [`Zeroizing`] so they are scrubbed when they go out of scope.
 pub(crate) struct EcdsaSigner {
     alg: EcdsaSigningAlg,
     private_key: EcKey<Private>,
@@ -65,9 +72,11 @@ impl RawSigner for EcdsaSigner {
 
         let private_key = PKey::from_ec_key(self.private_key.clone())?;
 
-        let pkcs8_private_key = private_key.private_key_to_pkcs8().map_err(|_| {
+        // `private_key_to_pkcs8` returns a fresh copy of the secret key bytes;
+        // wrap it so the buffer is zeroized when it goes out of scope.
+        let pkcs8_private_key = Zeroizing::new(private_key.private_key_to_pkcs8().map_err(|_| {
             RawSignerError::InvalidSigningCredentials("unsupported EC curve".to_string())
-        })?;
+        })?);
 
         let curve = ec_curve_from_private_key_der(&pkcs8_private_key).ok_or(
             RawSignerError::InvalidSigningCredentials("unsupported EC curve".to_string()),

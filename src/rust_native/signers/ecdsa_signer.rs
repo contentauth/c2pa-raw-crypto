@@ -16,6 +16,7 @@ use p256::ecdsa::{Signature as P256Signature, SigningKey as P256SigningKey};
 use p384::ecdsa::{Signature as P384Signature, SigningKey as P384SigningKey};
 use p521::ecdsa::{Signature as P512Signature, SigningKey as P512SigningKey};
 use pkcs8::DecodePrivateKey;
+use zeroize::ZeroizeOnDrop;
 
 use crate::{RawSigner, RawSignerError, SigningAlg};
 
@@ -25,13 +26,28 @@ enum EcdsaSigningAlg {
     Es512,
 }
 
+/// Holds the ECDSA private key. Each variant wraps a curve-specific
+/// `SigningKey`, all of which are zeroized when this value is dropped.
+#[derive(ZeroizeOnDrop)]
 pub(crate) enum EcdsaSigningKey {
     Es256(P256SigningKey),
     Es384(P384SigningKey),
-    Es512(P512SigningKey),
+    // The `p521` crate wraps the inner `ecdsa` signing key in a newtype that
+    // does not re-expose `ZeroizeOnDrop`, so it must be skipped here. The
+    // secret is still scrubbed: the inner `ecdsa::SigningKey` zeroizes its
+    // secret scalar in its own `Drop` impl when this value is dropped.
+    Es512(#[zeroize(skip)] P512SigningKey),
 }
 
+/// Implements [`RawSigner`] trait using the `p256`/`p384`/`p521` crates'
+/// implementations of ECDSA.
+///
+/// The private key material is held in an [`EcdsaSigningKey`], which is
+/// zeroized when this signer is dropped.
+#[derive(ZeroizeOnDrop)]
 pub(crate) struct EcdsaSigner {
+    // `alg` carries no secret material, so it is skipped when zeroizing.
+    #[zeroize(skip)]
     alg: EcdsaSigningAlg,
     signing_key: EcdsaSigningKey,
 }

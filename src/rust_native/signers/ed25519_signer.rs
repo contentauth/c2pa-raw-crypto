@@ -12,11 +12,16 @@
 // each license.
 
 use ed25519_dalek::{SigningKey, pkcs8::DecodePrivateKey};
+use zeroize::ZeroizeOnDrop;
 
 use crate::{RawSigner, RawSignerError, SigningAlg};
 
 /// Implements `RawSigner` trait using `ed25519_dalek` crate's implementation of
 /// Edwards Curve encryption.
+///
+/// The private key material is held in an `ed25519_dalek::SigningKey`, which is
+/// zeroized when this signer is dropped.
+#[derive(ZeroizeOnDrop)]
 pub(crate) struct Ed25519Signer {
     signing_key: SigningKey,
 }
