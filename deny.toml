@@ -22,6 +22,18 @@ yanked = "deny"
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
+# `sha2` 0.11 pulls in the `digest` 0.11 ecosystem, while the `rsa`, `ecdsa`,
+# and related RustCrypto signing crates still depend on the `digest` 0.10 line.
+# This leaves both versions of these crates in the tree until those crates also
+# move to `digest` 0.11. Skip the newer (0.11-era) duplicates until then.
+skip = [
+  { crate = "block-buffer@0.12.1", reason = "pulled in by sha2 0.11; rsa/ecdsa still use block-buffer 0.10" },
+  { crate = "const-oid@0.10.2", reason = "pulled in by sha2 0.11; rsa/ecdsa still use const-oid 0.9" },
+  { crate = "cpufeatures@0.3.0", reason = "pulled in by sha2 0.11; other crates still use cpufeatures 0.2" },
+  { crate = "crypto-common@0.2.2", reason = "pulled in by sha2 0.11; rsa/ecdsa still use crypto-common 0.1" },
+  { crate = "digest@0.11.3", reason = "pulled in by sha2 0.11; rsa/ecdsa still use digest 0.10" },
+  { crate = "sha2@0.11.0", reason = "direct dependency; rsa re-exports sha2 0.10 for RSA signing/validation" },
+]
 
 [licenses]
 allow = [
