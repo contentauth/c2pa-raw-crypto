@@ -38,7 +38,7 @@ zeroize = { version = "1.8", features = ["derive"] }
 # Rust-native crypto backend (default).
 ecdsa = { version = "0.16.9", default-features = false, optional = true }
 ed25519-dalek = { version = "2.1.1", features = ["pem"], optional = true }
-p256 = { version = "0.13.2", default-features = false, features = [
+p256 = { version = "0.14.0", default-features = false, features = [
   "arithmetic",
   "ecdsa",
   "pem",
