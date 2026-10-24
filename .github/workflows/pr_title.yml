@@ -1,5 +1,12 @@
 name: PR title
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -11,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       # If changing this, please also see `.commitlintrc` and
       # `docs/release-process.md` (in contentauth/c2pa-rs repo).
@@ -100,10 +107,10 @@ jobs:
           cargo install --quiet commitlint-rs
           set -e
 
-          echo  
-          echo  
-          echo --- commitlint results for PR title \"$PR_TITLE\" ---
-          echo  
+          echo
+          echo
+          echo "--- commitlint results for PR title \"$PR_TITLE\" ---"
+          echo
 
           echo "$PR_TITLE" | commitlint -g .commitlintrc.yml
 

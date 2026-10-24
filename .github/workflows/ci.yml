@@ -1,5 +1,12 @@
 name: CI
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   pull_request:
@@ -44,25 +51,30 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: ${{ matrix.rust_version }}
           components: llvm-tools-preview
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        if: matrix.rust_version == 'stable'
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2
+        with:
+          tool: cargo-llvm-cov
 
       - name: Generate code coverage
+        if: matrix.rust_version == 'stable'
         run: cargo llvm-cov --lib ${{ matrix.features.flags }} --lcov --ignore-filename-regex tests --output-path lcov.info
 
       - name: Filter out tests
-        uses: scouten/uncover-tests@v1
+        if: matrix.rust_version == 'stable'
+        uses: scouten/uncover-tests@f3bbdfb953b5989f48d8dfad0a88a83c4d914389 # v1
         with:
           input-file: lcov.info
           output-file: lcov.filtered.info
@@ -71,15 +83,20 @@ jobs:
       # so we don't attempt to upload code coverage in that case.
       - name: Upload code coverage results
         if: |
-          github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository
-        uses: codecov/codecov-action@v7.0.0
+          matrix.rust_version == 'stable' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_ORG_TOKEN }}
           fail_ci_if_error: true
           verbose: true
           files: ./lcov.filtered.info
           flags: ${{ matrix.features.name }}
+
+      - name: Run unit tests (MSRV)
+        if: matrix.rust_version != 'stable'
+        run: cargo test --lib ${{ matrix.features.flags }}
 
   tests-windows-arm:
     name: Unit tests (Windows ARM, ${{ matrix.features.name }})
@@ -111,23 +128,21 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Run unit tests
         run: cargo test --lib ${{ matrix.features.flags }}
 
   doc-tests:
-    name: Doc tests (requires nightly Rust)
-    # TODO: Remove this once cargo-llvm-cov can run doc tests and generate
-    # coverage. (This requires a bug fix that is only available in nightly Rust.)
-    # Watch https://github.com/taiki-e/cargo-llvm-cov/issues/2
-    # for progress.
+    name: Doc tests
 
     if: |
       github.event_name != 'pull_request' ||
@@ -138,46 +153,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-
-      # Disabling code coverage for doc tests due to a new bug in Rust nightly
-      # as of 2025-01-08. Will investigate later to see if there's a repro case.
-      # Meanwhile, simply run the tests so we know if there are any failing
-      # doc tests.
-
-      - name: Run doc tests (COVERAGE DISABLED)
-        run: |
-          cargo test --workspace --all-features --doc
-
-      # - name: Generate code coverage
-      #   env:
-      #     RUST_BACKTRACE: "1"
-      #   run: |
-      #   cargo llvm-cov --workspace --all-features --lcov --doctests --output-path lcov.info
-
-      # Tokens aren't available for PRs originating from forks,
-      # so we don't attempt to upload code coverage in that case.
-      # - name: Upload code coverage results
-      #   if: |
-      #     github.event_name != 'pull_request' ||
-      #     github.event.pull_request.author_association == 'OWNER' ||
-      #     github.event.pull_request.author_association == 'COLLABORATOR' ||
-      #     github.event.pull_request.author_association == 'MEMBER' ||
-      #     github.event.pull_request.user.login == 'dependabot[bot]'
-      #   uses: codecov/codecov-action@v5
-      #   with:
-      #     token: ${{ secrets.CODECOV_ORG_TOKEN }}
-      #     fail_ci_if_error: true
-      #     verbose: true
+      - name: Run doc tests
+        run: cargo test --all-features --doc
 
   tests-cross:
     name: Unit tests (cross, ${{ matrix.target }}, Rust ${{ matrix.rust_version }}, ${{ matrix.features.name }})
@@ -207,10 +194,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: ${{ matrix.rust_version }}
           targets: ${{ matrix.target }}
@@ -219,7 +206,7 @@ jobs:
         run: cargo install cross
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       # Note that we do not run code coverage because
       # it isn't readily accessible from cross-compilation
@@ -260,10 +247,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
@@ -272,7 +259,7 @@ jobs:
         run: cargo install cross
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       # Tier 2 requires build verification only, so we build (but do not run)
       # the library for each Android target.
@@ -306,10 +293,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: 1.88.0
           targets: aarch64-apple-ios-sim
@@ -318,7 +305,7 @@ jobs:
         run: |
           VERSION=0.8.1
           URL="https://github.com/sonos/dinghy/releases/download/${VERSION}/cargo-dinghy-macos-${VERSION}.tgz"
-          wget -O - $URL | tar -xz --strip-components=1 -C ~/.cargo/bin
+          wget -O - "$URL" | tar -xz --strip-components=1 -C ~/.cargo/bin
 
       - name: Check cargo-dinghy version.
         run: cargo dinghy --version
@@ -327,17 +314,17 @@ jobs:
         # Use the first installed iOS runtime and the first (i.e. oldest) supported iPhone device.
         run: |
           RUNTIME=$(xcrun simctl list runtimes --json | jq '.runtimes | map(select(.name | contains("iOS"))) | .[0]')
-          RUNTIME_ID=$(echo $RUNTIME | jq -r '.identifier')
-          echo "Using runtime:" $RUNTIME_ID
-          DEVICE_ID=$(echo $RUNTIME | jq -r '.supportedDeviceTypes | map(select(.productFamily == "iPhone")) | .[0].identifier')
-          echo "Using device:" $DEVICE_ID
-          SIM_ID=$(xcrun simctl create Test-iPhone $DEVICE_ID $RUNTIME_ID)
-          echo "Created simulator:" $SIM_ID
-          xcrun simctl boot $SIM_ID
-          echo "device=$SIM_ID" >> $GITHUB_ENV
+          RUNTIME_ID=$(echo "$RUNTIME" | jq -r '.identifier')
+          echo "Using runtime:" "$RUNTIME_ID"
+          DEVICE_ID=$(echo "$RUNTIME" | jq -r '.supportedDeviceTypes | map(select(.productFamily == "iPhone")) | .[0].identifier')
+          echo "Using device:" "$DEVICE_ID"
+          SIM_ID=$(xcrun simctl create Test-iPhone "$DEVICE_ID" "$RUNTIME_ID")
+          echo "Created simulator:" "$SIM_ID"
+          xcrun simctl boot "$SIM_ID"
+          echo "device=$SIM_ID" >> "$GITHUB_ENV"
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Run unit tests (cross build)
         run: cargo dinghy -p auto-ios-aarch64-sim -d ${{ env.device }} test --all-targets ${{ matrix.features.flags }}
@@ -373,16 +360,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: 1.88.0
           targets: ${{ matrix.target }}
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Build library (build only)
         run: cargo build --lib ${{ matrix.features.flags }} --target ${{ matrix.target }}
@@ -411,13 +398,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
 
       - name: Set up Chrome
-        uses: browser-actions/setup-chrome@v2
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2
         with:
           chrome-version: 142
           install-chromedriver: true
@@ -426,7 +415,7 @@ jobs:
         run: rustup target add wasm32-unknown-unknown
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
+        uses: cargo-bins/cargo-binstall@38bcfa5508eb1ee9a7f3b51b539d09b2cd19bac8 # main
 
       - name: Install wasm-bindgen-cli
         # Install the `wasm-bindgen-cli` version that matches the `wasm-bindgen`
@@ -470,19 +459,19 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
         # Nightly required for testing until this issue is resolved:
         # wasip2 target should not conditionally feature gate stdlib APIs rust-lang/rust#130323 https://github.com/rust-lang/rust/issues/130323
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: nightly-2026-01-16
 
       - name: Install wasmtime
         run: |
           curl https://wasmtime.dev/install.sh -sSf | bash
-          echo "$HOME/.wasmtime/bin" >> $GITHUB_PATH
+          echo "$HOME/.wasmtime/bin" >> "$GITHUB_PATH"
 
       - name: Install clang
         run: |
@@ -493,7 +482,7 @@ jobs:
         run: rustup target add --toolchain nightly-2026-01-16 wasm32-wasip2
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Run WASI tests
         env:
@@ -520,15 +509,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: nightly-2025-12-06
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Run tests
         run: |
@@ -546,13 +535,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Dry-run of crate publish
         run: cargo publish -p c2pa_raw_crypto --dry-run
@@ -569,15 +560,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
+          toolchain: stable
           components: clippy
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Run Clippy
         run: |
@@ -595,10 +587,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install nightly toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: nightly-2026-01-16
           components: rustfmt
@@ -618,7 +610,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Taplo CLI
         run: cargo install taplo-cli --locked
@@ -638,19 +630,21 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
         # Nightly is used here because the docs.rs build
         # uses nightly and we use doc_cfg features that are
         # not in stable Rust as of this writing (Rust 1.88).
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: nightly
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
 
       - name: Install cargo-docs-rs
-        uses: dtolnay/install@cargo-docs-rs
+        uses: dtolnay/install@982daea0f5d846abc3c83e01a6a1d73c040047c1 # cargo-docs-rs
 
       - name: Preflight docs.rs
         env:
@@ -669,14 +663,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install nightly Rust toolchain
         # Nightly is used here because we use doc_cfg features
         # that are not in stable Rust as of this writing (Rust 1.88).
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: nightly
 
       - name: Preflight cargo doc
+        env:
+          RUSTDOCFLAGS: -Dwarnings
         run: cargo +nightly doc --no-deps --document-private-items
 
   cargo-deny:
@@ -701,10 +699,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Audit crate dependencies
-        uses: EmbarkStudios/cargo-deny-action@v2.0.20
+        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2.0.20
         with:
           command: check ${{ matrix.checks }}
 
@@ -718,15 +716,12 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
           toolchain: nightly-2025-12-06
           # Pinning to specific nightly build for now. More recent versions
@@ -734,10 +729,21 @@ jobs:
           # errors.
 
       - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
+        uses: cargo-bins/cargo-binstall@38bcfa5508eb1ee9a7f3b51b539d09b2cd19bac8 # main
 
       - name: Install cargo-udeps
         run: cargo binstall --no-confirm cargo-udeps
 
       - name: Run cargo-udeps
         run: cargo udeps --all-targets --all-features
+
+  actionlint:
+    name: Lint GitHub Actions workflows
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Check workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
