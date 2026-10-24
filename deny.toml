@@ -27,12 +27,13 @@ wildcards = "deny"
 # This leaves both versions of these crates in the tree until those crates also
 # move to `digest` 0.11. Skip the newer (0.11-era) duplicates until then.
 skip = [
-  { crate = "block-buffer@0.12.1", reason = "pulled in by sha2 0.11; rsa/ecdsa still use block-buffer 0.10" },
-  { crate = "const-oid@0.10.2", reason = "pulled in by sha2 0.11; rsa/ecdsa still use const-oid 0.9" },
-  { crate = "cpufeatures@0.3.0", reason = "pulled in by sha2 0.11; other crates still use cpufeatures 0.2" },
-  { crate = "crypto-common@0.2.2", reason = "pulled in by sha2 0.11; rsa/ecdsa still use crypto-common 0.1" },
-  { crate = "digest@0.11.3", reason = "pulled in by sha2 0.11; rsa/ecdsa still use digest 0.10" },
-  { crate = "sha2@0.11.0", reason = "direct dependency; rsa re-exports sha2 0.10 for RSA signing/validation" },
+  { crate = "block-buffer:>=0.12,<0.13", reason = "pulled in by sha2 0.11; rsa/ecdsa still use block-buffer 0.10" },
+  { crate = "const-oid:>=0.10,<0.11", reason = "pulled in by sha2 0.11; rsa/ecdsa still use const-oid 0.9" },
+  { crate = "cpufeatures:>=0.3,<0.4", reason = "pulled in by sha2 0.11; other crates still use cpufeatures 0.2" },
+  { crate = "crypto-common:>=0.2,<0.3", reason = "pulled in by sha2 0.11; rsa/ecdsa still use crypto-common 0.1" },
+  { crate = "digest:>=0.11,<0.12", reason = "pulled in by sha2 0.11; rsa/ecdsa still use digest 0.10" },
+  { crate = "sha2:>=0.11,<0.12", reason = "direct dependency; rsa re-exports sha2 0.10 for RSA signing/validation" },
+  { crate = "syn:>=3,<4", reason = "serde/thiserror derive macros use syn 3; other derive macros still use syn 2; remove once they converge" },
 ]
 
 [licenses]

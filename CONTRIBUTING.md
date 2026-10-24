@@ -44,6 +44,12 @@ When updating an action, retain a full commit SHA in `uses` and a comment naming
 the corresponding version or branch; Dependabot maintains these references.
 Pinned Rust toolchain actions must specify the toolchain explicitly.
 
+Before opening a pull request, run
+`cargo deny --all-features check bans licenses sources` to check dependency policy.
+Duplicate-version exceptions in `deny.toml` are bounded to specific dependency
+generations so compatible updates do not require policy changes. Remove these
+exceptions when the dependencies converge on a single generation.
+
 Release automation publishes before generating the next release PR so the new
 tags are available when calculating versions. It does not cancel an active
 release run, and branch cleanup only removes branches associated with closed
