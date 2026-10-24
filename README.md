@@ -31,9 +31,12 @@ standalone `ecdsa` update proposed in [#26](https://github.com/contentauth/c2pa-
 `ecdsa` 0.17 traits and signature types cannot be used with the 0.13 curves.
 Dependabot groups ECDSA and the three curves so updates can be reviewed together.
 
+Ed25519 uses `ed25519-dalek` 3 with `signature` 3, `digest` / `sha2` 0.11,
+and PKCS#8 0.11 / SPKI 0.8, matching the newer ECDSA dependency family.
+
 RSA remains on stable `rsa` 0.9, `pkcs1` 0.7, and `rand` 0.8; RSA 0.10 is
-still prerelease. RSA and the unchanged `ed25519-dalek` 2 use `signature` 2,
-`digest` / `sha2` 0.10, and PKCS#8 0.10 / SPKI 0.7. The shared byte-oriented
+still prerelease. RSA uses `signature` 2, `digest` / `sha2` 0.10, and
+PKCS#8 0.10 / SPKI 0.7. The shared byte-oriented
 key parsers also retain PKCS#8 0.10 / SPKI 0.7. These generations coexist
 intentionally, with bounded duplicate exceptions in `deny.toml`; no
 prereleases or unrelated dependency majors are needed for the ECDSA migration.
