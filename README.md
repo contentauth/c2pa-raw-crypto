@@ -11,10 +11,14 @@ It deliberately stays narrow: it knows nothing about COSE framing, RFC 3161 time
 
 ## Cryptography backend / Crate features
 
-Two cryptography backends are available via Cargo feature flags:
+Crate capabilities are available via Cargo feature flags:
 
 - **`rust_native_crypto`** (enabled by default) — pure-Rust crates.
 - **`openssl`** — a vendored OpenSSL implementation.
+- **`serde`** (enabled by default) — `Serialize` and `Deserialize` support for `SigningAlg`.
+
+Disable default features and enable only what you need to omit serde, for
+example `--no-default-features --features rust_native_crypto`.
 
 **`rust_native_crypto` takes precedence.** If both features end up enabled (which can happen through Cargo feature unification in a workspace), the rust-native backend is selected at runtime and the OpenSSL backend, while compiled, is not used.
 This is not considered an error.
