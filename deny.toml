@@ -22,23 +22,23 @@ yanked = "deny"
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
-# ECDSA/curves use signature 3, digest 0.11 and PKCS#8 0.11. Stable RSA and
-# ed25519-dalek 2 still use the older generation. Keep exceptions bounded to
+# ECDSA/curves and Ed25519 use signature 3, digest 0.11 and PKCS#8 0.11.
+# Stable RSA still uses the older generation. Keep exceptions bounded to
 # the newer generation until these consumers can migrate to stable releases.
 skip = [
-  { crate = "block-buffer:>=0.12,<0.13", reason = "sha2/ECDSA use digest 0.11; RSA/Ed25519 still use digest 0.10" },
-  { crate = "const-oid:>=0.10,<0.11", reason = "ECDSA uses DER 0.8; RSA/Ed25519 still use DER 0.7" },
+  { crate = "block-buffer:>=0.12,<0.13", reason = "sha2/ECDSA/Ed25519 use digest 0.11; RSA still uses digest 0.10" },
+  { crate = "const-oid:>=0.10,<0.11", reason = "ECDSA/Ed25519 use DER 0.8; RSA still uses DER 0.7" },
   { crate = "cpufeatures:>=0.3,<0.4", reason = "pulled in by sha2 0.11; other crates still use cpufeatures 0.2" },
-  { crate = "crypto-common:>=0.2,<0.3", reason = "ECDSA uses crypto-common 0.2; RSA/Ed25519 still use crypto-common 0.1" },
-  { crate = "der:>=0.8,<0.9", reason = "ECDSA uses PKCS#8 0.11; RSA/Ed25519 and common parsers still use PKCS#8 0.10" },
-  { crate = "digest:>=0.11,<0.12", reason = "sha2/ECDSA use digest 0.11; RSA/Ed25519 still use digest 0.10" },
+  { crate = "crypto-common:>=0.2,<0.3", reason = "ECDSA/Ed25519 use crypto-common 0.2; RSA still uses crypto-common 0.1" },
+  { crate = "der:>=0.8,<0.9", reason = "ECDSA/Ed25519 use PKCS#8 0.11; RSA and common parsers still use PKCS#8 0.10" },
+  { crate = "digest:>=0.11,<0.12", reason = "sha2/ECDSA/Ed25519 use digest 0.11; RSA still uses digest 0.10" },
   { crate = "getrandom:>=0.4,<0.5", reason = "ECDSA uses getrandom 0.4; RSA/rand 0.8 still use getrandom 0.2" },
-  { crate = "pem-rfc7468:>=1,<2", reason = "ECDSA uses DER 0.8; RSA/Ed25519 still use DER 0.7" },
-  { crate = "pkcs8:>=0.11,<0.12", reason = "curve key traits use PKCS#8 0.11; RSA/Ed25519 and common parsers still use PKCS#8 0.10" },
+  { crate = "pem-rfc7468:>=1,<2", reason = "ECDSA/Ed25519 use DER 0.8; RSA still uses DER 0.7" },
+  { crate = "pkcs8:>=0.11,<0.12", reason = "curve/Ed25519 key traits use PKCS#8 0.11; RSA and common parsers still use PKCS#8 0.10" },
   { crate = "rand_core:>=0.10,<0.11", reason = "ECDSA uses rand_core 0.10; RSA/rand 0.8 still use rand_core 0.6" },
   { crate = "sha2:>=0.11,<0.12", reason = "direct dependency; rsa re-exports sha2 0.10 for RSA signing/validation" },
-  { crate = "signature:>=3,<4", reason = "ECDSA uses signature 3; stable RSA and ed25519-dalek 2 use signature 2" },
-  { crate = "spki:>=0.8,<0.9", reason = "curve key traits use SPKI 0.8; RSA/Ed25519 and common parsers still use SPKI 0.7" },
+  { crate = "signature:>=3,<4", reason = "ECDSA/Ed25519 use signature 3; stable RSA uses signature 2" },
+  { crate = "spki:>=0.8,<0.9", reason = "curve/Ed25519 key traits use SPKI 0.8; RSA and common parsers still use SPKI 0.7" },
   { crate = "syn:>=3,<4", reason = "serde/thiserror derive macros use syn 3; other derive macros still use syn 2; remove once they converge" },
 ]
 

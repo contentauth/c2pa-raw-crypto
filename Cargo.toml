@@ -39,7 +39,7 @@ zeroize = { version = "1.8", features = ["derive"] }
 # Rust-native crypto backend (default).
 # Keep ECDSA and all three curves on the same signature/elliptic-curve generation.
 ecdsa = { version = "0.17.0", default-features = false, optional = true }
-ed25519-dalek = { version = "2.1.1", features = ["pem"], optional = true }
+ed25519-dalek = { version = "3.0.0", features = ["pem"], optional = true }
 p256 = { version = "0.14.0", default-features = false, features = [
   "arithmetic",
   "ecdsa",
