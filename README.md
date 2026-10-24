@@ -21,6 +21,47 @@ This is not considered an error.
 
 Enabling neither is allowed (e.g. when only the type definitions are needed, or when signing is delegated to a remote service and no validation is performed); in that case the built-in signer/validator constructors report an error / return `None` at runtime.
 
+### RustCrypto dependency compatibility
+
+ECDSA uses the stable `ecdsa` 0.17 / `p256`, `p384`, and `p521` 0.14
+family together: `signature` 3, `elliptic-curve` 0.14, `digest` / `sha2`
+0.11, and PKCS#8 0.11 / SPKI 0.8. Import key-decoding and signature traits
+from that family, not from the older RSA dependencies. This replaces the
+standalone `ecdsa` update proposed in [#26](https://github.com/contentauth/c2pa-raw-crypto/pull/26):
+`ecdsa` 0.17 traits and signature types cannot be used with the 0.13 curves.
+Dependabot groups ECDSA and the three curves so updates can be reviewed together.
+
+RSA remains on stable `rsa` 0.9, `pkcs1` 0.7, and `rand` 0.8; RSA 0.10 is
+still prerelease. RSA and the unchanged `ed25519-dalek` 2 use `signature` 2,
+`digest` / `sha2` 0.10, and PKCS#8 0.10 / SPKI 0.7. The shared byte-oriented
+key parsers also retain PKCS#8 0.10 / SPKI 0.7. These generations coexist
+intentionally, with bounded duplicate exceptions in `deny.toml`; no
+prereleases or unrelated dependency majors are needed for the ECDSA migration.
+
+The public APIs and key/signature formats are unchanged: PEM PKCS#8 private
+keys, DER SPKI public keys, fixed-width P1363 signing output (64, 96, and 132
+bytes), and DER or P1363 verification input. Both low-S and high-S NIST
+signatures remain accepted. P-521 now uses the same zeroize-on-drop signing
+key and direct key decoding as the other curves, without an intermediate
+private-key byte copy. Its upstream implementation now uses deterministic
+RFC6979 signing, as P-256 and P-384 already did; callers must not rely on
+fresh randomness making repeated ECDSA signatures distinct.
+
+The ECDSA/curve releases and PKCS#8 0.11 / SPKI 0.8 / `getrandom` 0.4
+declare Rust 1.85. The resolved `crypto-bigint` 0.7.6 and `sha2` 0.11.1
+require Rust 1.87 and 1.88 respectively, also below this crate's unchanged
+Rust 1.96.0 requirement.
+Browser Wasm enables `getrandom` 0.4's `wasm_js` feature alongside
+`getrandom` 0.2's `js` feature for RSA; this needs no custom `RUSTFLAGS`.
+These JavaScript features are scoped to `wasm32-unknown-unknown`, not WASI.
+WASI continues to use system randomness, and the supported targets and
+backend precedence are unchanged.
+
+Upstream migration references:
+[ECDSA 0.17 changelog](https://github.com/RustCrypto/signatures/blob/ecdsa/v0.17.0/ecdsa/CHANGELOG.md),
+[P-521 0.14 changelog](https://github.com/RustCrypto/elliptic-curves/blob/p521/v0.14.0/p521/CHANGELOG.md),
+and [getrandom 0.4 target support](https://github.com/rust-random/getrandom/blob/v0.4.3/README.md).
+
 ## Contributions and feedback
 
 We welcome contributions to this project. For information on contributing, providing feedback, and about ongoing work, see [Contributing](./CONTRIBUTING.md).

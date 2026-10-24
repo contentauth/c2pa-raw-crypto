@@ -8,6 +8,13 @@ updates:
       prefix: "update"
     cooldown:
       default-days: 7
+    groups:
+      rustcrypto-ecdsa:
+        patterns:
+          - "ecdsa"
+          - "p256"
+          - "p384"
+          - "p521"
 
   - package-ecosystem: "github-actions"
     directory: "/"

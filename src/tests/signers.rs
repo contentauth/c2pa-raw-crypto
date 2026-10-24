@@ -56,7 +56,8 @@ fn es256() {
     let signature = signer.sign(data).unwrap();
 
     println!("signature len = {}", signature.len());
-    assert!(signature.len() <= signer.max_signature_size());
+    assert_eq!(signature.len(), 64);
+    assert_eq!(signer.max_signature_size(), 64);
 
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es256.pub_key");
 
@@ -82,7 +83,8 @@ fn es384() {
     let signature = signer.sign(data).unwrap();
 
     println!("signature len = {}", signature.len());
-    assert!(signature.len() <= signer.max_signature_size());
+    assert_eq!(signature.len(), 96);
+    assert_eq!(signer.max_signature_size(), 96);
 
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es384.pub_key");
 
@@ -91,10 +93,10 @@ fn es384() {
 }
 
 #[test]
-#[cfg(all(
-    feature = "openssl",
-    not(all(feature = "rust_native_crypto", target_arch = "wasm32"))
-))]
+#[cfg_attr(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    wasm_bindgen_test
+)]
 fn es512() {
     let private_key = include_bytes!("../../tests/fixtures/raw_signature/es512.priv");
 
@@ -108,7 +110,8 @@ fn es512() {
     let signature = signer.sign(data).unwrap();
 
     println!("signature len = {}", signature.len());
-    assert!(signature.len() <= signer.max_signature_size());
+    assert_eq!(signature.len(), 132);
+    assert_eq!(signer.max_signature_size(), 132);
 
     let pub_key = include_bytes!("../../tests/fixtures/raw_signature/es512.pub_key");
 
@@ -219,4 +222,175 @@ fn ps512() {
 
     let validator = validator_for_signing_alg(SigningAlg::Ps512).unwrap();
     validator.validate(&signature, data, pub_key).unwrap();
+}
+
+#[cfg(feature = "rust_native_crypto")]
+const ECDSA_CASES: [(SigningAlg, &[u8], &[u8], usize); 3] = [
+    (
+        SigningAlg::Es256,
+        include_bytes!("../../tests/fixtures/raw_signature/es256.priv"),
+        include_bytes!("../../tests/fixtures/raw_signature/es256.pub_key"),
+        64,
+    ),
+    (
+        SigningAlg::Es384,
+        include_bytes!("../../tests/fixtures/raw_signature/es384.priv"),
+        include_bytes!("../../tests/fixtures/raw_signature/es384.pub_key"),
+        96,
+    ),
+    (
+        SigningAlg::Es512,
+        include_bytes!("../../tests/fixtures/raw_signature/es512.priv"),
+        include_bytes!("../../tests/fixtures/raw_signature/es512.pub_key"),
+        132,
+    ),
+];
+
+#[cfg(feature = "rust_native_crypto")]
+fn ecdsa_der(alg: SigningAlg, signature: &[u8]) -> Vec<u8> {
+    match alg {
+        SigningAlg::Es256 => p256::ecdsa::Signature::from_slice(signature)
+            .unwrap()
+            .to_der()
+            .as_bytes()
+            .to_vec(),
+        SigningAlg::Es384 => p384::ecdsa::Signature::from_slice(signature)
+            .unwrap()
+            .to_der()
+            .as_bytes()
+            .to_vec(),
+        SigningAlg::Es512 => p521::ecdsa::Signature::from_slice(signature)
+            .unwrap()
+            .to_der()
+            .as_bytes()
+            .to_vec(),
+        _ => unreachable!(),
+    }
+}
+
+#[cfg(feature = "rust_native_crypto")]
+fn ecdsa_opposite_s(alg: SigningAlg, signature: &[u8]) -> Vec<u8> {
+    macro_rules! opposite_s {
+        ($signature:ty) => {{
+            let signature = <$signature>::from_slice(signature).unwrap();
+            let (r, s) = signature.split_scalars();
+            <$signature>::from_scalars(r.to_bytes(), (-s).to_bytes())
+                .unwrap()
+                .to_vec()
+        }};
+    }
+    match alg {
+        SigningAlg::Es256 => opposite_s!(p256::ecdsa::Signature),
+        SigningAlg::Es384 => opposite_s!(p384::ecdsa::Signature),
+        SigningAlg::Es512 => opposite_s!(p521::ecdsa::Signature),
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+#[cfg(feature = "rust_native_crypto")]
+#[cfg_attr(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    wasm_bindgen_test
+)]
+fn ecdsa_formats_and_errors() {
+    use crate::{RawSignatureValidationError, ec_utils::der_to_p1363};
+
+    for (alg, private_key, public_key, size) in ECDSA_CASES {
+        let signer = signer_from_private_key(private_key, alg).unwrap();
+        let validator = validator_for_signing_alg(alg).unwrap();
+        for data in [b"".as_slice(), b"sample", b"some sample content to sign"] {
+            let signature = signer.sign(data).unwrap();
+            assert_eq!(signature.len(), size);
+            assert_eq!(signer.max_signature_size(), size);
+            validator.validate(&signature, data, public_key).unwrap();
+
+            let der = ecdsa_der(alg, &signature);
+            assert_eq!(der_to_p1363(&der, size).unwrap(), signature);
+            validator.validate(&der, data, public_key).unwrap();
+            // C2PA NIST signatures accept both low-S and high-S encodings.
+            let opposite_s = ecdsa_opposite_s(alg, &signature);
+            assert_ne!(opposite_s, signature);
+            validator.validate(&opposite_s, data, public_key).unwrap();
+            validator
+                .validate(&ecdsa_der(alg, &opposite_s), data, public_key)
+                .unwrap();
+            assert_eq!(
+                validator.validate(&der, b"wrong message", public_key),
+                Err(RawSignatureValidationError::SignatureMismatch)
+            );
+
+            let mut oversized = signature.clone();
+            oversized.push(0);
+            for malformed in [
+                &signature[..size - 1],
+                oversized.as_slice(),
+                vec![0; size].as_slice(),
+                &[0x30, 0x03, 0x02, 0x01, 0x01],
+            ] {
+                assert_eq!(
+                    validator.validate(malformed, data, public_key),
+                    Err(RawSignatureValidationError::InvalidSignature)
+                );
+            }
+            assert_eq!(
+                validator.validate(&signature, data, b"not a public key"),
+                Err(RawSignatureValidationError::InvalidPublicKey)
+            );
+        }
+
+        for (other_alg, other_private_key, _, _) in ECDSA_CASES {
+            if other_alg != alg {
+                assert!(matches!(
+                    signer_from_private_key(other_private_key, alg),
+                    Err(RawSignerError::InvalidSigningCredentials(_))
+                ));
+            }
+        }
+    }
+}
+
+#[test]
+#[cfg(all(
+    feature = "rust_native_crypto",
+    feature = "openssl",
+    not(target_arch = "wasm32")
+))]
+fn ecdsa_cross_backend_and_native_precedence() {
+    use crate::{RawSignatureValidationError, openssl, rust_native};
+
+    let data = b"cross-backend ECDSA interoperability";
+    for (alg, private_key, public_key, size) in ECDSA_CASES {
+        let native_signer =
+            rust_native::signers::signer_from_private_key(private_key, alg).unwrap();
+        let openssl_signer = openssl::signers::signer_from_private_key(private_key, alg).unwrap();
+        let native_validator = rust_native::validators::validator_for_signing_alg(alg).unwrap();
+        let openssl_validator = openssl::validators::validator_for_signing_alg(alg).unwrap();
+
+        for signer in [&native_signer, &openssl_signer] {
+            let signature = signer.sign(data).unwrap();
+            assert_eq!(signature.len(), size);
+            let der = ecdsa_der(alg, &signature);
+            for validator in [&native_validator, &openssl_validator] {
+                validator.validate(&signature, data, public_key).unwrap();
+                validator.validate(&der, data, public_key).unwrap();
+                assert_eq!(
+                    validator.validate(&signature, b"wrong message", public_key),
+                    Err(RawSignatureValidationError::SignatureMismatch)
+                );
+            }
+        }
+
+        // Rust-native signing is deterministic; OpenSSL signing is randomized.
+        let selected = signer_from_private_key(private_key, alg).unwrap();
+        assert_eq!(
+            selected.sign(data).unwrap(),
+            native_signer.sign(data).unwrap()
+        );
+        let selected_validator = validator_for_signing_alg(alg).unwrap();
+        assert_eq!(
+            selected_validator.validate(&[], data, public_key),
+            Err(RawSignatureValidationError::InvalidSignature)
+        );
+    }
 }
