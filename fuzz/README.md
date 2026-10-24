@@ -18,6 +18,11 @@ lengths, then both OIDs, the signature, content, and remaining public-key bytes.
 The `corpus/` directories contain sample inputs from the repository's signature
 fixtures.
 
+GitHub Actions runs 100-iteration smoke tests for every target and both backends
+on pull requests. A weekly campaign runs each target/backend combination for
+five minutes and uploads crash artifacts for 14 days. The same campaign can be
+started manually from the Actions tab.
+
 The default fuzz build selects the Rust-native backend. To fuzz OpenSSL
 instead, disable the default feature and select the OpenSSL backend:
 
