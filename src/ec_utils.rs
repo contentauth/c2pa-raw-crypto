@@ -78,7 +78,7 @@ fn read_der_tlv(input: &[u8], expected_tag: u8) -> Option<(&[u8], &[u8])> {
     }
 
     let (content_len, length_octets) = read_der_length(input.get(1..)?)?;
-    let header_len = 1 + length_octets;
+    let header_len = 1usize.checked_add(length_octets)?;
     let total = header_len.checked_add(content_len)?;
     if input.len() < total {
         return None;
@@ -132,8 +132,12 @@ pub fn der_to_p1363(data: &[u8], sig_len: usize) -> Result<Vec<u8>, RawSignerErr
 
     // Pad or truncate as needed.
     let rp = if r.len() > sig_len {
-        let offset = r.len() - sig_len;
-        &r[offset..r.len()]
+        let offset = r.len().checked_sub(sig_len).ok_or_else(|| {
+            RawSignerError::InternalError("invalid signature components".to_string())
+        })?;
+        r.get(offset..).ok_or_else(|| {
+            RawSignerError::InternalError("invalid signature components".to_string())
+        })?
     } else {
         while r.len() != sig_len {
             r.insert(0, '0');
@@ -142,8 +146,12 @@ pub fn der_to_p1363(data: &[u8], sig_len: usize) -> Result<Vec<u8>, RawSignerErr
     };
 
     let sp = if s.len() > sig_len {
-        let offset = s.len() - sig_len;
-        &s[offset..s.len()]
+        let offset = s.len().checked_sub(sig_len).ok_or_else(|| {
+            RawSignerError::InternalError("invalid signature components".to_string())
+        })?;
+        s.get(offset..).ok_or_else(|| {
+            RawSignerError::InternalError("invalid signature components".to_string())
+        })?
     } else {
         while s.len() != sig_len {
             s.insert(0, '0');
