@@ -13,6 +13,7 @@
 
 use std::{fmt, str::FromStr};
 
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// Describes the digital signature algorithms allowed by the C2PA spec.
@@ -24,7 +25,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 /// > algorithms and key types listed as described in this section.
 ///
 /// [§13.2, “Digital Signatures”]: https://spec.c2pa.org/specifications/specifications/2.3/specs/C2PA_Specification.html#_digital_signatures
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 #[non_exhaustive]
 pub enum SigningAlg {
     /// ECDSA with SHA-256
@@ -67,6 +69,7 @@ impl FromStr for SigningAlg {
 }
 
 // Case-insensitive for backwards compatibility with the `config` crate.
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for SigningAlg {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
@@ -161,6 +164,7 @@ mod tests {
         all(target_arch = "wasm32", not(target_os = "wasi")),
         wasm_bindgen_test
     )]
+    #[cfg(feature = "serde")]
     fn alg_deserialize() {
         use serde::{
             Deserialize,
