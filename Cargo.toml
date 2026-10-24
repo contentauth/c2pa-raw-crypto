@@ -13,8 +13,9 @@ rust-version = "1.96.0"
 version = "0.2.1"
 
 [features]
-default = ["rust_native_crypto"]
+default = ["rust_native_crypto", "serde"]
 openssl = ["dep:openssl"]
+serde = ["dep:serde"]
 rust_native_crypto = [
   "dep:ecdsa",
   "dep:ed25519-dalek",
@@ -31,7 +32,7 @@ rust_native_crypto = [
 [dependencies]
 const-hex = "1.14"
 pkcs8 = "0.10.2"
-serde = { version = "1.0.225", features = ["derive"] }
+serde = { version = "1.0.225", features = ["derive"], optional = true }
 spki = "0.7.3"
 thiserror = "2.0.17"
 zeroize = { version = "1.8", features = ["derive"] }
