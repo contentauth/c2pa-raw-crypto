@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1](https://github.com/contentauth/c2pa-raw-crypto/compare/v0.2.0...v0.2.1)
+_24 October 2026_
+
+### Other
+
+* Update rasn requirement from 0.28.2 to 0.29.0 ([#39](https://github.com/contentauth/c2pa-raw-crypto/pull/39))
+* Update ed25519-dalek requirement from 2.1.1 to 3.0.0 ([#29](https://github.com/contentauth/c2pa-raw-crypto/pull/29))
+
 ## [0.2.0](https://github.com/contentauth/c2pa-raw-crypto/compare/v0.1.2...v0.2.0)
 _24 October 2026_
 
