@@ -69,6 +69,7 @@ jobs:
           tool: cargo-llvm-cov
 
       - name: Generate code coverage
+        id: generate_coverage
         if: matrix.rust_version == 'stable'
         run: cargo llvm-cov --lib ${{ matrix.features.flags }} --lcov --ignore-filename-regex tests --output-path lcov.info
 
@@ -83,10 +84,11 @@ jobs:
       # so we don't attempt to upload code coverage in that case.
       - name: Upload code coverage results
         if: |
-          matrix.rust_version == 'stable' &&
+          steps.generate_coverage.outcome == 'success' &&
           (github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository)
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+          github.event.pull_request.head.repo.full_name == github.repository
+          )
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_ORG_TOKEN }}
           fail_ci_if_error: true
