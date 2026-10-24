@@ -9,8 +9,8 @@ license = "MIT OR Apache-2.0"
 name = "c2pa_raw_crypto"
 readme = "README.md"
 repository = "https://github.com/contentauth/c2pa_raw_crypto"
-rust-version = "1.88.0"
-version = "0.1.2"
+rust-version = "1.96.0"
+version = "0.2.0"
 
 [features]
 default = ["rust_native_crypto"]
@@ -18,6 +18,7 @@ openssl = ["dep:openssl"]
 rust_native_crypto = [
   "dep:ecdsa",
   "dep:ed25519-dalek",
+  "dep:getrandom04",
   "dep:p256",
   "dep:p384",
   "dep:p521",
@@ -36,25 +37,25 @@ thiserror = "2.0.17"
 zeroize = { version = "1.8", features = ["derive"] }
 
 # Rust-native crypto backend (default).
-ecdsa = { version = "0.16.9", default-features = false, optional = true }
+# Keep ECDSA and all three curves on the same signature/elliptic-curve generation.
+ecdsa = { version = "0.17.0", default-features = false, optional = true }
 ed25519-dalek = { version = "3.0.0", features = ["pem"], optional = true }
-p256 = { version = "0.13.2", default-features = false, features = [
+p256 = { version = "0.14.0", default-features = false, features = [
   "arithmetic",
   "ecdsa",
   "pem",
   "std",
 ], optional = true }
-p384 = { version = "0.13.0", default-features = false, features = [
+p384 = { version = "0.14.0", default-features = false, features = [
   "arithmetic",
   "ecdsa",
   "pem",
   "std",
 ], optional = true }
-p521 = { version = "0.13.3", default-features = false, features = [
+p521 = { version = "0.14.0", default-features = false, features = [
   "arithmetic",
   "digest",
   "ecdsa",
-  "getrandom",
   "pem",
   "std",
 ], optional = true }
@@ -71,6 +72,10 @@ openssl = { version = "0.10.78", features = ["vendored"], optional = true }
 # its `js` backend to build for wasm32-unknown-unknown.
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
+# The updated curves use getrandom 0.4; RSA still requires the 0.2 generation.
+getrandom04 = { package = "getrandom", version = "0.4", features = [
+  "wasm_js",
+], optional = true }
 
 [dev-dependencies]
 bcder = "0.7.3"
