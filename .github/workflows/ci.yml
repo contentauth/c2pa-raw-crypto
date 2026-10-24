@@ -69,6 +69,7 @@ jobs:
           tool: cargo-llvm-cov
 
       - name: Generate code coverage
+        id: generate_coverage
         if: matrix.rust_version == 'stable'
         run: cargo llvm-cov --lib ${{ matrix.features.flags }} --lcov --ignore-filename-regex tests --output-path lcov.info
 
@@ -83,10 +84,11 @@ jobs:
       # so we don't attempt to upload code coverage in that case.
       - name: Upload code coverage results
         if: |
-          matrix.rust_version == 'stable' &&
+          steps.generate_coverage.outcome == 'success' &&
           (github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository)
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+          github.event.pull_request.head.repo.full_name == github.repository
+          )
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_ORG_TOKEN }}
           fail_ci_if_error: true
@@ -699,7 +701,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Audit crate dependencies
-        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2.0.20
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
         with:
           command: check ${{ matrix.checks }}
 
