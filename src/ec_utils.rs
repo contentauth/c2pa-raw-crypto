@@ -113,12 +113,13 @@ fn read_der_length(input: &[u8]) -> Option<(usize, usize)> {
 }
 
 fn truncate_component(component: &str, sig_len: usize) -> Result<&str, RawSignerError> {
-    let offset = component.len().checked_sub(sig_len).ok_or_else(|| {
-        RawSignerError::InternalError("invalid signature components".to_string())
-    })?;
-    component.get(offset..).ok_or_else(|| {
-        RawSignerError::InternalError("invalid signature components".to_string())
-    })
+    let offset = component
+        .len()
+        .checked_sub(sig_len)
+        .ok_or_else(|| RawSignerError::InternalError("invalid signature components".to_string()))?;
+    component
+        .get(offset..)
+        .ok_or_else(|| RawSignerError::InternalError("invalid signature components".to_string()))
 }
 
 /// Converts an ASN.1 DER-encoded ECDSA signature to fixed-size IEEE P1363
