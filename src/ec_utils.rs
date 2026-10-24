@@ -112,6 +112,15 @@ fn read_der_length(input: &[u8]) -> Option<(usize, usize)> {
     Some((len, 1 + n))
 }
 
+fn truncate_component(component: &str, sig_len: usize) -> Result<&str, RawSignerError> {
+    let offset = component.len().checked_sub(sig_len).ok_or_else(|| {
+        RawSignerError::InternalError("invalid signature components".to_string())
+    })?;
+    component.get(offset..).ok_or_else(|| {
+        RawSignerError::InternalError("invalid signature components".to_string())
+    })
+}
+
 /// Converts an ASN.1 DER-encoded ECDSA signature to fixed-size IEEE P1363
 /// (`r‖s`) form of length `sig_len` bytes.
 pub fn der_to_p1363(data: &[u8], sig_len: usize) -> Result<Vec<u8>, RawSignerError> {
@@ -132,12 +141,7 @@ pub fn der_to_p1363(data: &[u8], sig_len: usize) -> Result<Vec<u8>, RawSignerErr
 
     // Pad or truncate as needed.
     let rp = if r.len() > sig_len {
-        let offset = r.len().checked_sub(sig_len).ok_or_else(|| {
-            RawSignerError::InternalError("invalid signature components".to_string())
-        })?;
-        r.get(offset..).ok_or_else(|| {
-            RawSignerError::InternalError("invalid signature components".to_string())
-        })?
+        truncate_component(&r, sig_len)?
     } else {
         while r.len() != sig_len {
             r.insert(0, '0');
@@ -146,12 +150,7 @@ pub fn der_to_p1363(data: &[u8], sig_len: usize) -> Result<Vec<u8>, RawSignerErr
     };
 
     let sp = if s.len() > sig_len {
-        let offset = s.len().checked_sub(sig_len).ok_or_else(|| {
-            RawSignerError::InternalError("invalid signature components".to_string())
-        })?;
-        s.get(offset..).ok_or_else(|| {
-            RawSignerError::InternalError("invalid signature components".to_string())
-        })?
+        truncate_component(&s, sig_len)?
     } else {
         while s.len() != sig_len {
             s.insert(0, '0');
@@ -310,6 +309,22 @@ mod tests {
 
         assert!(
             matches!(err, RawSignerError::InternalError(m) if m == "unsupported algorithm for der_to_p1363")
+        );
+    }
+
+    #[test]
+    fn truncate_component_rejects_length_underflow() {
+        let err = truncate_component("abc", 4).unwrap_err();
+        assert!(
+            matches!(err, RawSignerError::InternalError(m) if m == "invalid signature components")
+        );
+    }
+
+    #[test]
+    fn truncate_component_rejects_non_character_boundary() {
+        let err = truncate_component("é", 1).unwrap_err();
+        assert!(
+            matches!(err, RawSignerError::InternalError(m) if m == "invalid signature components")
         );
     }
 
