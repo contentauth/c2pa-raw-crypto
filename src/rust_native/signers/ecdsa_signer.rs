@@ -12,10 +12,12 @@
 // each license.
 
 use ecdsa::signature::Signer;
-use p256::ecdsa::{Signature as P256Signature, SigningKey as P256SigningKey};
+use p256::{
+    ecdsa::{Signature as P256Signature, SigningKey as P256SigningKey},
+    pkcs8::DecodePrivateKey,
+};
 use p384::ecdsa::{Signature as P384Signature, SigningKey as P384SigningKey};
 use p521::ecdsa::{Signature as P512Signature, SigningKey as P512SigningKey};
-use pkcs8::DecodePrivateKey;
 use zeroize::ZeroizeOnDrop;
 
 use crate::{RawSigner, RawSignerError, SigningAlg};
@@ -32,11 +34,7 @@ enum EcdsaSigningAlg {
 pub(crate) enum EcdsaSigningKey {
     Es256(P256SigningKey),
     Es384(P384SigningKey),
-    // The `p521` crate wraps the inner `ecdsa` signing key in a newtype that
-    // does not re-expose `ZeroizeOnDrop`, so it must be skipped here. The
-    // secret is still scrubbed: the inner `ecdsa::SigningKey` zeroizes its
-    // secret scalar in its own `Drop` impl when this value is dropped.
-    Es512(#[zeroize(skip)] P512SigningKey),
+    Es512(P512SigningKey),
 }
 
 /// Implements [`RawSigner`] trait using the `p256`/`p384`/`p521` crates'
@@ -81,12 +79,7 @@ impl EcdsaSigner {
             }
 
             SigningAlg::Es512 => {
-                let secret = p521::SecretKey::from_pkcs8_pem(private_key_pem).map_err(|e| {
-                    RawSignerError::InvalidSigningCredentials(format!(
-                        "invalid ES512 private key: {e}"
-                    ))
-                })?;
-                let key = P512SigningKey::from_slice(&secret.to_bytes()).map_err(|e| {
+                let key = P512SigningKey::from_pkcs8_pem(private_key_pem).map_err(|e| {
                     RawSignerError::InvalidSigningCredentials(format!(
                         "invalid ES512 private key: {e}"
                     ))
@@ -184,9 +177,19 @@ mod tests {
     }
 
     // A syntactically valid PEM that is not a usable key (base64 "MA==" decodes
-    // to a single 0x30 byte). Drives each per-algorithm `from_pkcs8_pem` /
-    // `from_slice` failure branch.
+    // to a single 0x30 byte). Drives each per-algorithm `from_pkcs8_pem`
+    // failure branch.
     const BAD_PEM: &[u8] = b"-----BEGIN PRIVATE KEY-----\nMA==\n-----END PRIVATE KEY-----\n";
+
+    #[test]
+    fn signing_keys_zeroize_on_drop() {
+        fn assert_zeroize_on_drop<T: ZeroizeOnDrop>() {}
+        assert_zeroize_on_drop::<P256SigningKey>();
+        assert_zeroize_on_drop::<P384SigningKey>();
+        assert_zeroize_on_drop::<P512SigningKey>();
+        assert_zeroize_on_drop::<EcdsaSigningKey>();
+        assert_zeroize_on_drop::<EcdsaSigner>();
+    }
 
     #[test]
     fn rejects_invalid_utf8() {
@@ -226,9 +229,6 @@ mod tests {
 
     #[test]
     fn es512_sign_round_trip() {
-        // The integration ES512 sign test is gated to the OpenSSL backend, so
-        // this exercises the rust-native ES512 `sign` arm and its 132-byte
-        // `max_signature_size`.
         let private_key = include_bytes!("../../../tests/fixtures/raw_signature/es512.priv");
         let Ok(signer) = EcdsaSigner::from_private_key(private_key, SigningAlg::Es512) else {
             panic!("expected a signer");

@@ -36,6 +36,25 @@ for more information on sending pull requests.
 Code submissions will need to pass all automated tests in place at the time of submission.
 These include such things as Rust code format, Clippy/lint checks, and unit test coverage.
 
+CI runs build checks and tests for the supported platform and feature
+combinations, with native code coverage collected on stable Rust and ordinary
+unit tests on the minimum supported Rust version. GitHub Actions workflows are
+checked with `actionlint`.
+When updating an action, retain a full commit SHA in `uses` and a comment naming
+the corresponding version or branch; Dependabot maintains these references.
+Pinned Rust toolchain actions must specify the toolchain explicitly.
+
+Before opening a pull request, run
+`cargo deny --all-features check bans licenses sources` to check dependency policy.
+Duplicate-version exceptions in `deny.toml` are bounded to specific dependency
+generations so compatible updates do not require policy changes. Remove these
+exceptions when the dependencies converge on a single generation.
+
+Release automation publishes before generating the next release PR so the new
+tags are available when calculating versions. It does not cancel an active
+release run, and branch cleanup only removes branches associated with closed
+release PRs that are not used by any open PR.
+
 We encourage you to raise an issue in GitHub before starting work on a major addition to the crate.
 This will give us an opportunity to discuss API design and avoid duplicate efforts.
 
