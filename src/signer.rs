@@ -61,7 +61,7 @@ pub enum RawSignerError {
 
     /// No cryptography backend was enabled at build time. Enable either the
     /// `rust_native_crypto` (default) or `openssl` feature to use the built-in
-    /// signers.
+    /// signers. The `openssl` feature is unsupported on wasm32 targets.
     #[error("no cryptography backend was enabled at build time")]
     NoCryptoBackend,
 
@@ -70,14 +70,14 @@ pub enum RawSignerError {
     InternalError(String),
 }
 
-#[cfg(feature = "openssl")]
+#[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
 impl From<openssl::error::ErrorStack> for RawSignerError {
     fn from(err: openssl::error::ErrorStack) -> Self {
         Self::CryptoLibraryError(err.to_string())
     }
 }
 
-#[cfg(feature = "openssl")]
+#[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
 impl From<crate::openssl::OpenSslMutexUnavailable> for RawSignerError {
     fn from(err: crate::openssl::OpenSslMutexUnavailable) -> Self {
         Self::InternalError(err.to_string())
@@ -117,12 +117,19 @@ pub fn signer_from_private_key(
         crate::rust_native::signers::signer_from_private_key(&private_key, alg)
     }
 
-    #[cfg(all(feature = "openssl", not(feature = "rust_native_crypto")))]
+    #[cfg(all(
+        feature = "openssl",
+        not(target_arch = "wasm32"),
+        not(feature = "rust_native_crypto")
+    ))]
     {
         return crate::openssl::signers::signer_from_private_key(&private_key, alg);
     }
 
-    #[cfg(not(any(feature = "rust_native_crypto", feature = "openssl")))]
+    #[cfg(not(any(
+        feature = "rust_native_crypto",
+        all(feature = "openssl", not(target_arch = "wasm32"))
+    )))]
     Err(RawSignerError::NoCryptoBackend)
 }
 
@@ -151,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "openssl")]
+    #[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
     fn mutex_unavailable_maps_to_internal_error() {
         // A poisoned OpenSSL FFI mutex surfaces as an internal error.
         let err: RawSignerError = crate::openssl::OpenSslMutexUnavailable.into();

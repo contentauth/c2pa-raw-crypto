@@ -409,9 +409,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # OpenSSL cannot be compiled for wasm32, so the OpenSSL-enabled combos
-        # are excluded here.
+        # OpenSSL-enabled combinations are checked in reject-wasm-openssl.
         features:
+          - name: default
+            flags: ""
           - name: no-features
             flags: --no-default-features
           - name: rust-native
@@ -470,9 +471,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # OpenSSL cannot be compiled for WASI, so the OpenSSL-enabled combos
-        # are excluded here.
+        # OpenSSL-enabled combinations are checked in reject-wasm-openssl.
         features:
+          - name: default
+            flags: ""
           - name: no-features
             flags: --no-default-features
           - name: rust-native
@@ -512,6 +514,55 @@ jobs:
           RUST_MIN_STACK: 16777216
         run: |
           cargo +nightly-2026-07-12 test --target wasm32-wasip2 -p c2pa_raw_crypto ${{ matrix.features.flags }} -- --no-capture
+
+  reject-wasm-openssl:
+    name: Reject OpenSSL (${{ matrix.target }}, ${{ matrix.features.name }})
+
+    if: |
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository ||
+      contains(github.event.pull_request.labels.*.name, 'safe to test') ||
+      contains(github.event.pull_request.labels.*.name, 'check-release')
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [wasm32-unknown-unknown, wasm32-wasip2]
+        features:
+          - name: openssl-only
+            flags: --no-default-features --features openssl
+          - name: default-with-openssl
+            flags: --features openssl
+          - name: all-features
+            flags: --all-features
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+
+      - name: Assert the intentional unsupported-feature diagnostic
+        run: |
+          diagnostics="$RUNNER_TEMP/wasm-openssl-diagnostics.json"
+          if cargo check --lib --target ${{ matrix.target }} ${{ matrix.features.flags }} \
+            --message-format=json > "$diagnostics"; then
+            echo "::error::OpenSSL must not compile on wasm32"
+            exit 1
+          fi
+          jq -s -e '
+            [.[] | select(.reason == "compiler-message") | .message | select(.level == "error")]
+            | length == 1 and (.[0].message == "the `openssl` feature is unsupported on wasm32 targets (including browser Wasm and WASI); disable `openssl` and use `rust_native_crypto` (enabled by default) instead")
+          ' "$diagnostics"
 
   test-direct-minimal-versions:
     name: Unit tests with minimum versions of direct dependencies

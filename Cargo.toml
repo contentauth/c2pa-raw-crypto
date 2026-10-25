@@ -14,6 +14,7 @@ version = "0.2.1"
 
 [features]
 default = ["rust_native_crypto", "serde"]
+# Unsupported on all wasm32 targets; enabling it there is a compile-time error.
 openssl = ["dep:openssl"]
 rust_native_crypto = [
   "dep:ecdsa",
@@ -65,7 +66,7 @@ rand = { version = "0.8.5", optional = true }
 rsa = { version = "0.9.10", features = ["sha2"], optional = true }
 sha2 = { version = "0.11.0", optional = true }
 
-# OpenSSL is unavailable on wasm32; only offer the feature off-Wasm.
+# OpenSSL is unavailable on wasm32; lib.rs explicitly rejects the feature there.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 openssl = { version = "0.10.78", features = ["vendored"], optional = true }
 
