@@ -45,12 +45,19 @@ pub fn validator_for_signing_alg(alg: SigningAlg) -> Option<Box<dyn RawSignature
         crate::rust_native::validators::validator_for_signing_alg(alg)
     }
 
-    #[cfg(all(feature = "openssl", not(feature = "rust_native_crypto")))]
+    #[cfg(all(
+        feature = "openssl",
+        not(target_arch = "wasm32"),
+        not(feature = "rust_native_crypto")
+    ))]
     {
         return crate::openssl::validators::validator_for_signing_alg(alg);
     }
 
-    #[cfg(not(any(feature = "rust_native_crypto", feature = "openssl")))]
+    #[cfg(not(any(
+        feature = "rust_native_crypto",
+        all(feature = "openssl", not(target_arch = "wasm32"))
+    )))]
     {
         let _ = alg;
         None
@@ -76,7 +83,11 @@ pub fn validator_for_sig_and_hash_algs(
         )
     }
 
-    #[cfg(all(feature = "openssl", not(feature = "rust_native_crypto")))]
+    #[cfg(all(
+        feature = "openssl",
+        not(target_arch = "wasm32"),
+        not(feature = "rust_native_crypto")
+    ))]
     {
         return crate::openssl::validators::validator_for_sig_and_hash_algs(
             sig_alg.as_bytes(),
@@ -84,7 +95,10 @@ pub fn validator_for_sig_and_hash_algs(
         );
     }
 
-    #[cfg(not(any(feature = "rust_native_crypto", feature = "openssl")))]
+    #[cfg(not(any(
+        feature = "rust_native_crypto",
+        all(feature = "openssl", not(target_arch = "wasm32"))
+    )))]
     {
         let _ = (sig_alg, hash_alg);
         None
@@ -120,14 +134,14 @@ pub enum RawSignatureValidationError {
     InternalError(String),
 }
 
-#[cfg(feature = "openssl")]
+#[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
 impl From<openssl::error::ErrorStack> for RawSignatureValidationError {
     fn from(err: openssl::error::ErrorStack) -> Self {
         Self::CryptoLibraryError(err.to_string())
     }
 }
 
-#[cfg(feature = "openssl")]
+#[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
 impl From<crate::openssl::OpenSslMutexUnavailable> for RawSignatureValidationError {
     fn from(err: crate::openssl::OpenSslMutexUnavailable) -> Self {
         Self::InternalError(err.to_string())
@@ -135,7 +149,7 @@ impl From<crate::openssl::OpenSslMutexUnavailable> for RawSignatureValidationErr
 }
 
 #[cfg(test)]
-#[cfg(feature = "openssl")]
+#[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
 

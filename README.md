@@ -14,14 +14,29 @@ It deliberately stays narrow: it knows nothing about COSE framing, RFC 3161 time
 Crate capabilities are available via Cargo feature flags:
 
 - **`rust_native_crypto`** (enabled by default) — pure-Rust crates.
-- **`openssl`** — a vendored OpenSSL implementation.
+- **`openssl`** — a vendored OpenSSL implementation. **Unsupported on all `wasm32` targets**, including browser Wasm and WASI; enabling it there is a compile-time error.
 - **`serde`** (enabled by default) — `Serialize` and `Deserialize` support for `SigningAlg`.
 
 Disable default features and enable only what you need to omit serde, for
 example `--no-default-features --features rust_native_crypto`.
 
-**`rust_native_crypto` takes precedence.** If both features end up enabled (which can happen through Cargo feature unification in a workspace), the rust-native backend is selected at runtime and the OpenSSL backend, while compiled, is not used.
+**On non-`wasm32` targets, `rust_native_crypto` takes precedence.** If both features end up enabled (which can happen through Cargo feature unification in a workspace), the rust-native backend is selected at runtime and the OpenSSL backend, while compiled, is not used.
 This is not considered an error.
+
+**On `wasm32`, `openssl` is prohibited even when `rust_native_crypto` is also enabled.**
+OpenSSL relies on C-language facilities unavailable on these targets. It is not
+silently ignored: `--all-features` is therefore also unsupported on `wasm32`.
+Use default features or `--no-default-features --features rust_native_crypto`,
+and ensure no dependency enables this crate's `openssl` feature through Cargo
+feature unification.
+
+| Feature selection | Non-`wasm32` platforms | Browser Wasm / WASI |
+| --- | --- | --- |
+| Default features | Rust-native backend | Rust-native backend |
+| `--no-default-features` | No built-in backend | No built-in backend |
+| `--no-default-features --features rust_native_crypto` | Rust-native backend | Rust-native backend |
+| `--no-default-features --features openssl` | OpenSSL backend | Compile-time error |
+| `--all-features` | Rust-native backend (OpenSSL also compiled) | Compile-time error |
 
 Enabling neither is allowed (e.g. when only the type definitions are needed, or when signing is delegated to a remote service and no validation is performed); in that case the built-in signer/validator constructors report an error / return `None` at runtime.
 
