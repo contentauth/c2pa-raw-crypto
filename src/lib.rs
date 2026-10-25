@@ -53,11 +53,11 @@ pub mod oids;
 mod oid;
 pub use oid::Oid;
 
-// On non-wasm32 targets, the OpenSSL backend is *compiled* whenever `openssl` is enabled,
-// but the runtime dispatch (see `signer.rs` / `validator.rs`) only selects it
-// when `rust_native_crypto` is not also enabled. This split keeps the API
-// surface (e.g. `OpenSslMutex`) consistent for downstream crates regardless of
-// how Cargo unifies features.
+// On non-wasm32 targets, the OpenSSL backend is *compiled* whenever `openssl`
+// is enabled, but the runtime dispatch (see `signer.rs` / `validator.rs`) only
+// selects it when `rust_native_crypto` is not also enabled. This split keeps
+// the API surface (e.g. `OpenSslMutex`) consistent for downstream crates
+// regardless of how Cargo unifies features.
 #[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
 mod openssl;
 #[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
