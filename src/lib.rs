@@ -13,6 +13,23 @@
 
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::string_slice
+)]
+#![cfg_attr(
+    test,
+    allow(
+        clippy::arithmetic_side_effects,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap,
+        clippy::string_slice
+    )
+)]
 
 // Note: `SigningAlg` is defined in this crate, so `#[non_exhaustive]` does not
 // force a wildcard arm on the matches below; downstream crates, however, must
