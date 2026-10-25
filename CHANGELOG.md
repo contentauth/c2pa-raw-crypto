@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2](https://github.com/contentauth/c2pa-raw-crypto/compare/v0.2.1...v0.2.2)
+_25 October 2026_
+
+### Added
+
+* Add fuzz targets for public APIs ([#46](https://github.com/contentauth/c2pa-raw-crypto/pull/46))
+* Make `serde` optional ([#43](https://github.com/contentauth/c2pa-raw-crypto/pull/43))
+
+### Fixed
+
+* Explicitly reject OpenSSL on wasm32 targets ([#57](https://github.com/contentauth/c2pa-raw-crypto/pull/57))
+
 ## [0.2.1](https://github.com/contentauth/c2pa-raw-crypto/compare/v0.2.0...v0.2.1)
 _24 October 2026_
 
