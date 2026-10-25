@@ -1,38 +1,38 @@
 [package]
-name = "c2pa-raw-crypto-fuzz"
-version = "0.0.0"
-publish = false
 edition = "2024"
+name = "c2pa-raw-crypto-fuzz"
+publish = false
+version = "0.0.0"
 
 [package.metadata]
 cargo-fuzz = true
 
 [features]
 default = ["rust_native_crypto"]
-rust_native_crypto = ["c2pa_raw_crypto/rust_native_crypto"]
 openssl = ["c2pa_raw_crypto/openssl"]
+rust_native_crypto = ["c2pa_raw_crypto/rust_native_crypto"]
 
 [dependencies]
-libfuzzer-sys = "0.4"
 c2pa_raw_crypto = { path = "..", default-features = false }
+libfuzzer-sys = "0.4"
 
 [[bin]]
+bench = false
+doc = false
 name = "ec_der"
 path = "fuzz_targets/ec_der.rs"
 test = false
-doc = false
-bench = false
 
 [[bin]]
+bench = false
+doc = false
 name = "private_key"
 path = "fuzz_targets/private_key.rs"
 test = false
-doc = false
-bench = false
 
 [[bin]]
+bench = false
+doc = false
 name = "signature_validation"
 path = "fuzz_targets/signature_validation.rs"
 test = false
-doc = false
-bench = false
