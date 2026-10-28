@@ -13,6 +13,29 @@
 
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::string_slice
+)]
+#![cfg_attr(
+    test,
+    allow(
+        clippy::arithmetic_side_effects,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap,
+        clippy::string_slice
+    )
+)]
+
+#[cfg(all(feature = "openssl", target_arch = "wasm32"))]
+compile_error!(
+    "the `openssl` feature is unsupported on wasm32 targets (including browser Wasm and WASI); \
+     disable `openssl` and use `rust_native_crypto` (enabled by default) instead"
+);
 
 // Note: `SigningAlg` is defined in this crate, so `#[non_exhaustive]` does not
 // force a wildcard arm on the matches below; downstream crates, however, must
@@ -30,14 +53,14 @@ pub mod oids;
 mod oid;
 pub use oid::Oid;
 
-// The OpenSSL backend is *compiled* whenever the `openssl` feature is enabled,
-// but the runtime dispatch (see `signer.rs` / `validator.rs`) only selects it
-// when `rust_native_crypto` is not also enabled. This split keeps the API
-// surface (e.g. `OpenSslMutex`) consistent for downstream crates regardless of
-// how Cargo unifies features.
-#[cfg(feature = "openssl")]
+// On non-wasm32 targets, the OpenSSL backend is *compiled* whenever `openssl`
+// is enabled, but the runtime dispatch (see `signer.rs` / `validator.rs`) only
+// selects it when `rust_native_crypto` is not also enabled. This split keeps
+// the API surface (e.g. `OpenSslMutex`) consistent for downstream crates
+// regardless of how Cargo unifies features.
+#[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
 mod openssl;
-#[cfg(feature = "openssl")]
+#[cfg(all(feature = "openssl", not(target_arch = "wasm32")))]
 pub use openssl::{OpenSslMutex, OpenSslMutexUnavailable};
 
 #[cfg(feature = "rust_native_crypto")]

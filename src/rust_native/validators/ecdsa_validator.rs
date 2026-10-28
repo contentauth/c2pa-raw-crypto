@@ -14,7 +14,7 @@
 use ecdsa::{Signature as EcdsaSignature, signature::hazmat::PrehashVerifier};
 use p256::ecdsa::VerifyingKey as P256VerifyingKey;
 use p384::ecdsa::VerifyingKey as P384VerifyingKey;
-use p521::{PublicKey as P521PublicKey, ecdsa::VerifyingKey as P521VerifyingKey};
+use p521::ecdsa::VerifyingKey as P521VerifyingKey;
 use sha2::{Digest, Sha256, Sha384, Sha512};
 
 use crate::{
@@ -99,14 +99,7 @@ impl RawSignatureValidator for EcdsaValidator {
                 let signature = EcdsaSignature::from_slice(&adjusted_sig)
                     .map_err(|_| RawSignatureValidationError::InvalidSignature)?;
 
-                // P521VerifyingKey does't have an implementation of `from_public_key` so we
-                // load it manually.
-                let pk = P521PublicKey::from_public_key_der(public_key)
-                    .map_err(|_| RawSignatureValidationError::InvalidPublicKey)?;
-
-                let pk_bytes = pk.to_sec1_bytes();
-
-                let vk = P521VerifyingKey::from_sec1_bytes(&pk_bytes)
+                let vk = P521VerifyingKey::from_public_key_der(public_key)
                     .map_err(|_| RawSignatureValidationError::InvalidPublicKey)?;
 
                 vk.verify_prehash(&digest, &signature)
