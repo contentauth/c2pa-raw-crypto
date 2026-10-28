@@ -14,7 +14,7 @@ version = "0.1.2"
 
 [features]
 default = ["rust_native_crypto"]
-openssl = ["dep:openssl"]
+openssl = ["dep:openssl", "dep:curve25519-dalek"]
 rust_native_crypto = [
   "dep:ecdsa",
   "dep:ed25519-dalek",
@@ -29,6 +29,7 @@ rust_native_crypto = [
 
 [dependencies]
 const-hex = "1.14"
+curve25519-dalek = { version = "4.1.3", optional = true }
 pkcs8 = "0.10.2"
 serde = { version = "1.0.225", features = ["derive"] }
 spki = "0.7.3"

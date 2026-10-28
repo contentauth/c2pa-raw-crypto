@@ -11,7 +11,7 @@
 // specific language governing permissions and limitations under
 // each license.
 
-use ed25519_dalek::{PUBLIC_KEY_LENGTH, Signature, Verifier, VerifyingKey};
+use ed25519_dalek::{PUBLIC_KEY_LENGTH, Signature, VerifyingKey};
 use spki::SubjectPublicKeyInfoRef;
 
 use crate::{RawSignatureValidationError, RawSignatureValidator, oids::ED25519_OID};
@@ -47,7 +47,7 @@ impl RawSignatureValidator for Ed25519Validator {
         let ed_sig = Signature::from_slice(sig)
             .map_err(|_| RawSignatureValidationError::InvalidSignature)?;
 
-        match vk.verify(data, &ed_sig) {
+        match vk.verify_strict(data, &ed_sig) {
             Ok(_) => Ok(()),
             Err(_) => Err(RawSignatureValidationError::SignatureMismatch),
         }
@@ -110,6 +110,28 @@ mod tests {
                 .validate(sig, SAMPLE_DATA, &spki)
                 .unwrap_err(),
             RawSignatureValidationError::InvalidPublicKey
+        );
+    }
+
+    #[test]
+    fn weak_public_key_rejected() {
+        let spki = [
+            0x30, 0x2a, // SEQUENCE, 42 bytes
+            0x30, 0x05, // algorithm SEQUENCE, 5 bytes
+            0x06, 0x03, 0x2b, 0x65, 0x70, // OID 1.3.101.112 (Ed25519)
+            0x03, 0x21, 0x00, // BIT STRING, 33 bytes: 0 unused bits + 32 key bytes
+            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+        ];
+
+        let forged_sig = [0u8; 64];
+
+        assert_eq!(
+            Ed25519Validator {}
+                .validate(&forged_sig, SAMPLE_DATA, &spki)
+                .unwrap_err(),
+            RawSignatureValidationError::SignatureMismatch
         );
     }
 
