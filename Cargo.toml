@@ -15,7 +15,7 @@ version = "0.2.1"
 [features]
 default = ["rust_native_crypto", "serde"]
 # Unsupported on all wasm32 targets; enabling it there is a compile-time error.
-openssl = ["dep:openssl"]
+openssl = ["dep:openssl", "dep:curve25519-dalek"]
 rust_native_crypto = [
   "dep:ecdsa",
   "dep:ed25519-dalek",
@@ -32,6 +32,7 @@ serde = ["dep:serde"]
 
 [dependencies]
 const-hex = "1.14"
+curve25519-dalek = { version = "5.0.0", optional = true }
 pkcs8 = "0.10.2"
 serde = { version = "1.0.225", features = ["derive"], optional = true }
 spki = "0.7.3"
