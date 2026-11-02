@@ -125,7 +125,8 @@ mod tests {
             0x00, 0x00, 0x00, 0x00,
         ];
 
-        let forged_sig = [0u8; 64];
+        let mut forged_sig = [0u8; 64];
+        forged_sig[0] = 0x01;
 
         assert_eq!(
             Ed25519Validator {}
