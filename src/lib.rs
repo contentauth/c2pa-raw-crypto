@@ -48,10 +48,11 @@ compile_error!(
 // exercised only when `openssl` is enabled and `rust_native_crypto` is not.
 
 pub mod ec_utils;
-pub mod oids;
 
 mod oid;
 pub use oid::Oid;
+
+pub mod oids;
 
 // On non-wasm32 targets, the OpenSSL backend is *compiled* whenever `openssl`
 // is enabled, but the runtime dispatch (see `signer.rs` / `validator.rs`) only

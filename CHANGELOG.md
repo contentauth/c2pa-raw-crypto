@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.2](https://github.com/contentauth/c2pa-raw-crypto/compare/v0.2.1...v0.2.2)
 _02 November 2026_
 
+This version was yanked because the change to make `serde` optional caused `c2pa` crates to build.
+An identical version will be released as 0.3.0.
+
 ### Added
 
 * Add fuzz targets for public APIs ([#46](https://github.com/contentauth/c2pa-raw-crypto/pull/46))
