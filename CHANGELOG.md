@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/contentauth/c2pa-raw-crypto/compare/v0.2.2...v0.3.0)
+_03 November 2026_
+
+### Added
+
+* [**breaking**] Reissue crate as version 0.3.0 to avoid breaking changes due to `serde` becoming optional ([#63](https://github.com/contentauth/c2pa-raw-crypto/pull/63))
+
 ## [0.2.2](https://github.com/contentauth/c2pa-raw-crypto/compare/v0.2.1...v0.2.2)
 _02 November 2026_
 
